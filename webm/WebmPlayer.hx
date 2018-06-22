@@ -37,14 +37,16 @@ class WebmPlayer extends Bitmap
 	var lastRequestedVideoFrame = 0.0;
 	var playing = false;
 	var renderedCount = 0;
+    var loop = false;
 
-	public function new(io:WebmIo, soundEnabled:Bool = true)
+	public function new(io:WebmIo, soundEnabled:Bool = false, loop:Bool = true)
 	{
 		super(null);
 		
+        this.loop = loop;
 		this.soundEnabled = soundEnabled;
 
-		if (BLANK_BYTES == null)
+		if (soundEnabled && BLANK_BYTES == null)
 		{
 			BLANK_BYTES = new ByteArray();
 			for (i in 0...BYTES_PER_SAMPLE)
@@ -59,7 +61,7 @@ class WebmPlayer extends Bitmap
 		webmDecoder = hx_webm_decoder_create(io.io, soundEnabled);
 		
 		var info = hx_webm_decoder_get_info(webmDecoder);
-		bitmapData = new BitmapData(info[0].int(), info[1].int(), false, 0);
+		bitmapData = new BitmapData(info[0].int(), info[1].int(), true, 0x00000000);
 		frameRate = info[2];
 		duration = info[3];
 
@@ -143,8 +145,10 @@ class WebmPlayer extends Bitmap
 				this.sound.close();
 			}
 			playing = false;
-			if (!pRestart) dispatchEvent(new WebmEvent(WebmEvent.STOP));
-			dispose();
+			if (!pRestart) {
+                dispatchEvent(new WebmEvent(WebmEvent.STOP));
+			    dispose();
+            }
 		}
 	}
 	
@@ -169,7 +173,11 @@ class WebmPlayer extends Bitmap
 		if (!hx_webm_decoder_has_more(webmDecoder))
 		{
 			dispatchEvent(new WebmEvent(WebmEvent.COMPLETE));
-			stop();
+			if (loop) {
+                restart();
+            } else {
+                stop();
+            }
 		}
 	}
 
