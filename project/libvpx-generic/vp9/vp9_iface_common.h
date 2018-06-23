@@ -47,11 +47,11 @@ static void yuvconfig2image(vpx_image_t *img, const YV12_BUFFER_CONFIG  *yv12,
   img->planes[VPX_PLANE_Y] = yv12->y_buffer;
   img->planes[VPX_PLANE_U] = yv12->u_buffer;
   img->planes[VPX_PLANE_V] = yv12->v_buffer;
-  img->planes[VPX_PLANE_ALPHA] = yv12->alpha_buffer;
+  img->planes[VPX_PLANE_ALPHA] = NULL;
   img->stride[VPX_PLANE_Y] = yv12->y_stride;
   img->stride[VPX_PLANE_U] = yv12->uv_stride;
   img->stride[VPX_PLANE_V] = yv12->uv_stride;
-  img->stride[VPX_PLANE_ALPHA] = yv12->alpha_stride;
+  img->stride[VPX_PLANE_ALPHA] = yv12->y_stride;
 #if CONFIG_VP9_HIGHBITDEPTH
   if (yv12->flags & YV12_FLAG_HIGHBITDEPTH) {
     // vpx_image_t uses byte strides and a pointer to the first byte
@@ -61,11 +61,11 @@ static void yuvconfig2image(vpx_image_t *img, const YV12_BUFFER_CONFIG  *yv12,
     img->planes[VPX_PLANE_Y] = (uint8_t*)CONVERT_TO_SHORTPTR(yv12->y_buffer);
     img->planes[VPX_PLANE_U] = (uint8_t*)CONVERT_TO_SHORTPTR(yv12->u_buffer);
     img->planes[VPX_PLANE_V] = (uint8_t*)CONVERT_TO_SHORTPTR(yv12->v_buffer);
-    img->planes[VPX_PLANE_ALPHA] = 2 * yv12->alpha_buffer;
+    img->planes[VPX_PLANE_ALPHA] = NULL;
     img->stride[VPX_PLANE_Y] = 2 * yv12->y_stride;
     img->stride[VPX_PLANE_U] = 2 * yv12->uv_stride;
     img->stride[VPX_PLANE_V] = 2 * yv12->uv_stride;
-    img->stride[VPX_PLANE_ALPHA] = 2 * yv12->alpha_stride;
+    img->stride[VPX_PLANE_ALPHA] = 2 * yv12->y_stride;
   }
 #endif  // CONFIG_VP9_HIGHBITDEPTH
   img->bps = bps;

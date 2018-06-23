@@ -266,11 +266,11 @@ static void yuvconfig2image(vpx_image_t               *img,
     img->planes[VPX_PLANE_Y] = yv12->y_buffer;
     img->planes[VPX_PLANE_U] = yv12->u_buffer;
     img->planes[VPX_PLANE_V] = yv12->v_buffer;
-    img->planes[VPX_PLANE_ALPHA] = yv12->alpha_buffer;
+    img->planes[VPX_PLANE_ALPHA] = NULL;
     img->stride[VPX_PLANE_Y] = yv12->y_stride;
     img->stride[VPX_PLANE_U] = yv12->uv_stride;
     img->stride[VPX_PLANE_V] = yv12->uv_stride;
-    img->stride[VPX_PLANE_ALPHA] = yv12->alpha_stride;
+    img->stride[VPX_PLANE_ALPHA] = yv12->y_stride;
     img->bit_depth = 8;
     img->bps = 12;
     img->user_priv = user_priv;
