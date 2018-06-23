@@ -72,7 +72,7 @@ extern void _vpx_codec_destroy(HxWebmContext *codecPointer);
 extern vpx_codec_err_t _vpx_codec_decode(HxWebmContext *codecPointer, char *framePointer, int frameSize);
 extern vpx_image_t *_vpx_codec_get_frame(HxWebmContext *codecPointer);
 extern int test_decode_main(const char *infileName, const char* outfileName);
-extern void YUV420toRGBA(uint8* Y, uint8* U, uint8* V, int words_per_line, int width, int height, uint32* pixdata, int y_stride, int uv_stride);
+extern void YUV420toRGBA(uint8* Y, uint8* U, uint8* V, uint8* A, int words_per_line, int width, int height, uint32* pixdata, int y_stride, int uv_stride, int a_stride);
 
 
 static unsigned int mem_get_le32(const unsigned char *mem) {
@@ -144,11 +144,10 @@ void WebpInitTables() {
   init_done = 1;
 }
 
-void WebpToRGB(int y, int u, int v, uint8* const dst) {
+void WebpToRGB(int y, int u, int v, int a, uint8* const dst) {
   const int r_off = kVToR[v];
   const int g_off = (kVToG[v] + kUToG[u]) >> RGB_FRAC;
   const int b_off = kUToB[u];
-  const int a = 0xFF;
   const int r = kClip[y + r_off - RGB_RANGE_MIN];
   const int g = kClip[y + g_off - RGB_RANGE_MIN];
   const int b = kClip[y + b_off - RGB_RANGE_MIN];
@@ -172,21 +171,23 @@ void WebpToRGB(int y, int u, int v, uint8* const dst) {
 static void YUV420toRGBLine(uint8* y_src,
                             uint8* u_src,
                             uint8* v_src,
+                            uint8* a_src,
                             int y_width,
                             uint32* rgb_dst) {
   int x;
   for (x = 0; x < (y_width >> 1); ++x) {
     const int U = u_src[0];
     const int V = v_src[0];
-    WebpToRGB(y_src[0], U, V, (uint8* const)(rgb_dst));
-    WebpToRGB(y_src[1], U, V, (uint8* const)(rgb_dst + 1));
+    WebpToRGB(y_src[0], U, V, a_src[0], (uint8* const)(rgb_dst));
+    WebpToRGB(y_src[1], U, V, a_src[1], (uint8* const)(rgb_dst + 1));
     ++u_src;
     ++v_src;
     y_src += 2;
+    a_src += 2;
     rgb_dst += 2;
   }
   if (y_width & 1) {      /* Rightmost pixel */
-    WebpToRGB(y_src[0], (*u_src), (*v_src), (uint8* const)(rgb_dst));
+    WebpToRGB(y_src[0], (*u_src), (*v_src), a_src[0], (uint8* const)(rgb_dst));
   }
 }
 	
@@ -203,7 +204,7 @@ static void YUV420toRGBLine(uint8* y_src,
  *     6. pixdata: the output data buffer. Caller should allocate
  *                 height * pixwpl bytes of memory before calling this routine.
  */
-void YUV420toRGBA(uint8* Y, uint8* U, uint8* V, int words_per_line, int width, int height, uint32* pixdata, int y_stride, int uv_stride) {
+void YUV420toRGBA(uint8* Y, uint8* U, uint8* V, uint8* A, int words_per_line, int width, int height, uint32* pixdata, int y_stride, int uv_stride, int a_stride) {
   int y_width = width;
   //int y_stride = y_width;
   int uv_width = ((y_width + 1) >> 1);
@@ -220,6 +221,7 @@ void YUV420toRGBA(uint8* Y, uint8* U, uint8* V, int words_per_line, int width, i
     YUV420toRGBLine(Y + y * y_stride,
                     U + (y >> 1) * uv_stride,
                     V + (y >> 1) * uv_stride,
+                    A + y * y_stride,
                     width,
                     pixdata + y * words_per_line);
   }
@@ -355,17 +357,19 @@ extern "C" {
 			val_throw(alloc_string("Can't alloc memory"));
 			return alloc_null();
 		}
-		
+
 		YUV420toRGBA(
 			img->planes[0],
 			img->planes[1],
 			img->planes[2],
+			img->planes[3],
 			display_width,
 			display_width,
 			display_height,
 			(uint32*)output_data,
 			img->stride[0],
-			img->stride[1]
+			img->stride[1],
+			img->stride[3]
 		);
 		
 		value array = alloc_array(3);
