@@ -6238,6 +6238,7 @@ long Cluster::ParseBlockGroup(long long payload_size, long long& pos,
       return E_FILE_FORMAT_INVALID;
 
     if (id == 0x35A2) {  // DiscardPadding
+      printf("DISCARD!?!?!?!\n");
       status = UnserializeInt(pReader, pos, size, discard_padding);
 
       if (status < 0)  // error
@@ -6245,6 +6246,14 @@ long Cluster::ParseBlockGroup(long long payload_size, long long& pos,
     }
 
     if (id != 0x21) {  // sub-part of BlockGroup is not a Block
+      
+       /*const long long id2 = ReadUInt(pReader, pos, len);
+       if (id2 == 0x75A1) {
+         printf("\n\nADDITIONALLLL!!!\n\n");
+       }
+
+      printf("IDDDDDD %lld || %lld, POD: %lld,  SIZE: %lld", id, id2, pos, size); // 0x75A1*/
+      
       pos += size;  // consume sub-part of block group
 
       if (pos > payload_stop)

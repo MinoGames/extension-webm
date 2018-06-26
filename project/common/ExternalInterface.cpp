@@ -362,14 +362,14 @@ extern "C" {
 			img->planes[0],
 			img->planes[1],
 			img->planes[2],
-			img->planes[3],
+			img->planes[0],
 			display_width,
 			display_width,
 			display_height,
 			(uint32*)output_data,
 			img->stride[0],
 			img->stride[1],
-			img->stride[3]
+			img->stride[0]
 		);
 		
 		value array = alloc_array(3);
