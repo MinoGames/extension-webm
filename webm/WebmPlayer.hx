@@ -62,7 +62,7 @@ class WebmPlayer extends Bitmap
 		
 		var info = hx_webm_decoder_get_info(webmDecoder);
 		bitmapData = new BitmapData(info[0].int(), info[1].int(), true, 0x00000000);
-		frameRate = info[2];
+		frameRate = info[2] == 0 ? 24.0 : info[2]; // TODO: Figure out why frameRate is always 0
 		duration = info[3];
 
 		if (soundEnabled)
@@ -131,6 +131,7 @@ class WebmPlayer extends Bitmap
 		
 			addEventListener(Event.ENTER_FRAME, onSpriteEnterFrame);
 			playing = true;
+
 			dispatchEvent(new WebmEvent(WebmEvent.PLAY));
 		}
 	}

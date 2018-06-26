@@ -72,9 +72,11 @@ class Block {
 
  public:
   const long long m_start;
+  const long long m_additional_start;
+  const long long m_additional_stop;
   const long long m_size;
 
-  Block(long long start, long long size, long long discard_padding);
+  Block(long long start, long long size, long long discard_padding, long long additional_start = 0, long long additional_end = 0);
   ~Block();
 
   long Parse(const Cluster*);
@@ -99,6 +101,7 @@ class Block {
   };
 
   const Frame& GetFrame(int frame_index) const;
+  const Frame& AdditionalFrame() const;
 
   long long GetDiscardPadding() const;
 
@@ -161,7 +164,8 @@ class BlockGroup : public BlockEntry {
              long long block_start,  // absolute pos of block's payload
              long long block_size,  // size of block's payload
              long long prev, long long next, long long duration,
-             long long discard_padding);
+             long long discard_padding,
+             long long additional_start = 0, long long additional_stop = 0);
 
   long Parse();
 
@@ -915,9 +919,11 @@ class Cluster {
   long ParseBlockGroup(long long, long long&, long&);
 
   long CreateBlock(long long id, long long pos, long long size,
-                   long long discard_padding);
+                   long long discard_padding,
+                   long long additional_start = 0, long long additional_stop = 0);
   long CreateBlockGroup(long long start_offset, long long size,
-                        long long discard_padding);
+                        long long discard_padding,
+                        long long additional_start = 0, long long additional_stop = 0);
   long CreateSimpleBlock(long long, long long);
 };
 

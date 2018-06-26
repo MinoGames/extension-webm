@@ -841,7 +841,7 @@ extern "C" {
 
 						printf("\t\tVideo Width\t\t: %d\n", this->width);
 						printf("\t\tVideo Height\t\t: %d\n", this->height);
-						printf("\t\tVideo Rate\t\t: %f\n", (float)this->frameRate);
+						printf("\t\tVideo Rate\t\t: %f | %f\n", (float)this->frameRate, pVideoTrack->GetFrameRate());
 					}
 
 					if (this->enableAudio && trackType == mkvparser::Track::kAudio) {
@@ -927,9 +927,15 @@ extern "C" {
 
 						for (int i = 0; i < frameCount; ++i) {
 							const Block::Frame& theFrame = pBlock->GetFrame(i);
+							const Block::Frame& theFrame2 = pBlock->AdditionalFrame();
 							const long size = theFrame.len;
 							const long long offset = theFrame.pos;
+
+                            const long size2 = theFrame2.len;
+							const long long offset2 = theFrame2.pos;
 							
+                            printf("%d, %d\n", (int)size2, (int)offset2);
+
 #if 1
 							//printf("%d, %d\n", (int)size, (int)offset); fflush(stdout);
 							
@@ -996,8 +1002,8 @@ extern "C" {
 			value array = alloc_array(4);
 			val_array_set_i(array, 0, alloc_int(processor->width));
 			val_array_set_i(array, 1, alloc_int(processor->height));
-			val_array_set_i(array, 3, alloc_float(processor->frameRate));
-			val_array_set_i(array, 4, alloc_float(processor->duration_sec));
+			val_array_set_i(array, 2, alloc_float(processor->frameRate));
+			val_array_set_i(array, 3, alloc_float(processor->duration_sec));
 			return array;
 		}
 

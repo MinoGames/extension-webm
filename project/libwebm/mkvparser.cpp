@@ -6163,6 +6163,8 @@ long Cluster::ParseBlockGroup(long long payload_size, long long& pos,
   }
 
   long long discard_padding = 0;
+  long long additional_start = 0;
+  long long additional_stop = 0;
 
   while (pos < payload_stop) {
     // parse sub-block element ID
@@ -6238,22 +6240,40 @@ long Cluster::ParseBlockGroup(long long payload_size, long long& pos,
       return E_FILE_FORMAT_INVALID;
 
     if (id == 0x35A2) {  // DiscardPadding
-      printf("DISCARD!?!?!?!\n");
       status = UnserializeInt(pReader, pos, size, discard_padding);
 
       if (status < 0)  // error
         return status;
     }
 
-    if (id != 0x21) {  // sub-part of BlockGroup is not a Block
-      
-       /*const long long id2 = ReadUInt(pReader, pos, len);
-       if (id2 == 0x75A1) {
-         printf("\n\nADDITIONALLLL!!!\n\n");
-       }
+    if (id == 0x35A1) { // Additional data (why is the left most 1 bit ignored?)
+        additional_start = pos;
+        additional_stop = pos + size;
 
-      printf("IDDDDDD %lld || %lld, POD: %lld,  SIZE: %lld", id, id2, pos, size); // 0x75A1*/
-      
+        /*
+        // From chromium source code
+        uint64_t block_add_id = base::HostToNet64(block_add_id_);
+        if (block_additional_data_) {
+            // TODO(vigneshv): Technically, more than 1 BlockAdditional is allowed
+            // as per matroska spec. But for now we don't have a use case to
+            // support parsing of such files. Take a look at this again when such a
+            // case arises.
+            MEDIA_LOG(ERROR, media_log_) << "More than 1 BlockAdditional in a "
+                                            "BlockGroup is not supported.";
+            return false;
+        }
+        // First 8 bytes of side_data in DecoderBuffer is the BlockAddID
+        // element's value in Big Endian format. This is done to mimic ffmpeg
+        // demuxer's behavior.
+        block_additional_data_size_ = size + sizeof(block_add_id);
+        block_additional_data_.reset(new uint8_t[block_additional_data_size_]);
+        memcpy(block_additional_data_.get(), &block_add_id,
+                sizeof(block_add_id));
+        memcpy(block_additional_data_.get() + 8, data, size);
+        */
+    }
+
+    if (id != 0x21) {  // sub-part of BlockGroup is not a Block
       pos += size;  // consume sub-part of block group
 
       if (pos > payload_stop)
@@ -6345,7 +6365,7 @@ long Cluster::ParseBlockGroup(long long payload_size, long long& pos,
   assert(pos == payload_stop);
 
   status = CreateBlock(0x20,  // BlockGroup ID
-                       payload_start, payload_size, discard_padding);
+                       payload_start, payload_size, discard_padding, additional_start, additional_stop);
   if (status != 0)
     return status;
 
@@ -6732,7 +6752,8 @@ long long Cluster::GetLastTime() const {
 
 long Cluster::CreateBlock(long long id,
                           long long pos,  // absolute pos of payload
-                          long long size, long long discard_padding) {
+                          long long size, long long discard_padding,
+                          long long additional_start, long long additional_stop) {
   assert((id == 0x20) || (id == 0x23));  // BlockGroup or SimpleBlock
 
   if (m_entries_count < 0) {  // haven't parsed anything yet
@@ -6769,14 +6790,16 @@ long Cluster::CreateBlock(long long id,
     }
   }
 
-  if (id == 0x20)  // BlockGroup ID
-    return CreateBlockGroup(pos, size, discard_padding);
-  else  // SimpleBlock ID
+  if (id == 0x20) {  // BlockGroup ID
+    return CreateBlockGroup(pos, size, discard_padding, additional_start, additional_stop);
+  } else {  // SimpleBlock ID
     return CreateSimpleBlock(pos, size);
+  }
 }
 
 long Cluster::CreateBlockGroup(long long start_offset, long long size,
-                               long long discard_padding) {
+                               long long discard_padding,
+                               long long additional_start, long long additional_stop) {
   assert(m_entries);
   assert(m_entries_size > 0);
   assert(m_entries_count >= 0);
@@ -6860,7 +6883,7 @@ long Cluster::CreateBlockGroup(long long start_offset, long long size,
   BlockEntry*& pEntry = *ppEntry;
 
   pEntry = new (std::nothrow)
-      BlockGroup(this, idx, bpos, bsize, prev, next, duration, discard_padding);
+      BlockGroup(this, idx, bpos, bsize, prev, next, duration, discard_padding, additional_start, additional_stop);
 
   if (pEntry == NULL)
     return -1;  // generic error
@@ -7186,9 +7209,10 @@ const Block* SimpleBlock::GetBlock() const { return &m_block; }
 
 BlockGroup::BlockGroup(Cluster* pCluster, long idx, long long block_start,
                        long long block_size, long long prev, long long next,
-                       long long duration, long long discard_padding)
+                       long long duration, long long discard_padding,
+                       long long additional_start, long long additional_stop)
     : BlockEntry(pCluster, idx),
-      m_block(block_start, block_size, discard_padding),
+      m_block(block_start, block_size, discard_padding, additional_start, additional_stop),
       m_prev(prev),
       m_next(next),
       m_duration(duration) {}
@@ -7210,8 +7234,10 @@ long long BlockGroup::GetPrevTimeCode() const { return m_prev; }
 long long BlockGroup::GetNextTimeCode() const { return m_next; }
 long long BlockGroup::GetDurationTimeCode() const { return m_duration; }
 
-Block::Block(long long start, long long size_, long long discard_padding)
+Block::Block(long long start, long long size_, long long discard_padding, long long additional_start, long long additional_stop)
     : m_start(start),
+      m_additional_start(additional_start),
+      m_additional_stop(additional_stop),
       m_size(size_),
       m_track(0),
       m_timecode(-1),
@@ -7651,6 +7677,16 @@ const Block::Frame& Block::GetFrame(int idx) const {
   const Frame& f = m_frames[idx];
   assert(f.pos > 0);
   assert(f.len > 0);
+
+  return f;
+}
+
+const Block::Frame& Block::AdditionalFrame() const {
+  
+  Frame* m_frames = new Frame[1];
+  Frame& f = m_frames[0];
+  f.pos = m_additional_start;
+  f.len = m_additional_stop - m_additional_start;
 
   return f;
 }
