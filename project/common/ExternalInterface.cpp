@@ -934,7 +934,10 @@ extern "C" {
                             const long size2 = theFrame2.len;
 							const long long offset2 = theFrame2.pos;
 							
-                            printf("%d, %d\n", (int)size2, (int)offset2);
+
+                            printf("--------------\n");
+                            printf("%d, %d\n", (int)offset, (int)size);
+                            printf("%d, %d\n", (int)offset2, (int)size2);
 
 #if 1
 							//printf("%d, %d\n", (int)size, (int)offset); fflush(stdout);
@@ -944,6 +947,9 @@ extern "C" {
 							
 							if (trackType == mkvparser::Track::kVideo) {
 								//printf("%lld\n", time_ns);
+
+                                printf("OKOKOKOKOKOKOKO");
+
 								val_call2(decode_video, alloc_float((double)(time_ns / 1000) / (double)(1000 * 1000)), buffer_val(frame_data));
 							} else if (this->enableAudio && trackType == mkvparser::Track::kAudio) {
 								vorbisDecoder->parseData((unsigned char *)buffer_data(frame_data), buffer_size(frame_data), time_ns, decode_audio);
