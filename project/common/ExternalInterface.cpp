@@ -926,15 +926,14 @@ extern "C" {
 						//printf("\t\t\tBlock\t\t:%s,%s,%15lld\n", (trackType == mkvparser::Track::kVideo) ? "V" : "A", pBlock->IsKey() ? "I" : "P", time_ns); fflush(stdout);
 
 						for (int i = 0; i < frameCount; ++i) {
-							const Block::Frame& theFrame = pBlock->GetFrame(i);
-							const Block::Frame& theFrame2 = pBlock->AdditionalFrame();
+							const Block::Frame& theFrame2 = pBlock->GetFrame(i);
+							const Block::Frame& theFrame = pBlock->AdditionalFrame();
 							const long size = theFrame.len;
 							const long long offset = theFrame.pos;
 
                             const long size2 = theFrame2.len;
 							const long long offset2 = theFrame2.pos;
 							
-
                             printf("--------------\n");
                             printf("%d, %d\n", (int)offset, (int)size);
                             printf("%d, %d\n", (int)offset2, (int)size2);
@@ -947,8 +946,6 @@ extern "C" {
 							
 							if (trackType == mkvparser::Track::kVideo) {
 								//printf("%lld\n", time_ns);
-
-                                printf("OKOKOKOKOKOKOKO");
 
 								val_call2(decode_video, alloc_float((double)(time_ns / 1000) / (double)(1000 * 1000)), buffer_val(frame_data));
 							} else if (this->enableAudio && trackType == mkvparser::Track::kAudio) {

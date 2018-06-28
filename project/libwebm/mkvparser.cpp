@@ -6247,30 +6247,20 @@ long Cluster::ParseBlockGroup(long long payload_size, long long& pos,
     }
 
     if (id == 0x35A1) { // Additional data (why is the left most 1 bit ignored?)
+        // Took a while, but I figured it out!!
         additional_start = pos;
-        additional_stop = pos + size;
+        const long long additional_id = ReadUInt(pReader, additional_start, len);
+        additional_start += len;  // consume ID
 
-        /*
-        // From chromium source code
-        uint64_t block_add_id = base::HostToNet64(block_add_id_);
-        if (block_additional_data_) {
-            // TODO(vigneshv): Technically, more than 1 BlockAdditional is allowed
-            // as per matroska spec. But for now we don't have a use case to
-            // support parsing of such files. Take a look at this again when such a
-            // case arises.
-            MEDIA_LOG(ERROR, media_log_) << "More than 1 BlockAdditional in a "
-                                            "BlockGroup is not supported.";
-            return false;
-        }
-        // First 8 bytes of side_data in DecoderBuffer is the BlockAddID
-        // element's value in Big Endian format. This is done to mimic ffmpeg
-        // demuxer's behavior.
-        block_additional_data_size_ = size + sizeof(block_add_id);
-        block_additional_data_.reset(new uint8_t[block_additional_data_size_]);
-        memcpy(block_additional_data_.get(), &block_add_id,
-                sizeof(block_add_id));
-        memcpy(block_additional_data_.get() + 8, data, size);
-        */
+        const long long additional_size = ReadUInt(pReader, additional_start, len);
+        additional_start += len;  // consume size
+
+        additional_start += 4; // Skip something?
+
+        const long long additonal_something = ReadUInt(pReader, additional_start, len);
+        additional_start += len;  // consume something
+        
+        additional_stop = payload_stop;      
     }
 
     if (id != 0x21) {  // sub-part of BlockGroup is not a Block
@@ -6825,6 +6815,7 @@ long Cluster::CreateBlockGroup(long long start_offset, long long size,
 
   while (pos < stop) {
     long len;
+
     const long long id = ReadUInt(pReader, pos, len);
     assert(id >= 0);  // TODO
     assert((pos + len) <= stop);
@@ -6871,6 +6862,7 @@ long Cluster::CreateBlockGroup(long long start_offset, long long size,
     pos += size;  // consume payload
     assert(pos <= stop);
   }
+
   if (bpos < 0)
     return E_FILE_FORMAT_INVALID;
 
