@@ -182,12 +182,12 @@ class WebmPlayer extends Bitmap
 		}
 	}
 
-	function decodeVideoFrame(time:Float, data:BytesData)
+	function decodeVideoFrame(time:Float, data:BytesData, alphaData:BytesData)
 	{
-		lastDecodedVideoFrame = time;
+        lastDecodedVideoFrame = time;
 		++renderedCount;
 		
-		vpxDecoder.decode(data);
+		vpxDecoder.decode(data, alphaData);
 		
 		if (skippedSteps < SKIP_STEP_LIMIT && playing && lastDecodedVideoFrame < lastRequestedVideoFrame)
 		{

@@ -58,9 +58,12 @@ typedef struct {
 
 typedef struct HxWebmContext {
 	vpx_codec_ctx_t context;
+    vpx_codec_ctx_t context_alpha;
 	vpx_codec_err_t res;
 	vpx_codec_iter_t iter;
+	vpx_codec_iter_t iter_alpha;
 	vpx_codec_stream_info_t stream_info;
+	vpx_codec_stream_info_t stream_info_alpha;
 	//int frameSize;
 	//unsigned char    frameData[256*1024];
 } HxWebmContext;
@@ -236,11 +239,13 @@ static vpx_codec_ctx_t  codec;
 vpx_codec_err_t _vpx_codec_dec_init(HxWebmContext *codecPointer) {
 	int flags = 0;
 	memset(codecPointer, 0, sizeof(HxWebmContext));
+    vpx_codec_dec_init(&codecPointer->context_alpha, interface, NULL, flags);
 	return vpx_codec_dec_init(&codecPointer->context, interface, NULL, flags);
 }
 
 void _vpx_codec_destroy(HxWebmContext *codecPointer) {
-	vpx_codec_destroy(&codecPointer->context);
+	vpx_codec_destroy(&codecPointer->context_alpha);
+    vpx_codec_destroy(&codecPointer->context);
 }
 
 vpx_codec_err_t _vpx_codec_decode(HxWebmContext *codecPointer, char *framePointer, int frameSize) {
@@ -254,9 +259,25 @@ vpx_codec_err_t _vpx_codec_decode(HxWebmContext *codecPointer, char *framePointe
 	return decode_result;
 }
 
+vpx_codec_err_t _vpx_codec_decode_alpha(HxWebmContext *codecPointer, char *framePointer, int frameSize) {
+	codecPointer->iter_alpha = NULL;
+	//printf("\n_vpx_codec_decode:\n");
+	//for (int n = 0; n < frameSize; n++) printf("%02X ", (unsigned char)framePointer[n]);
+	//printf("\n");
+	vpx_codec_err_t decode_result = vpx_codec_decode(&codecPointer->context_alpha, (unsigned char *)framePointer, frameSize, NULL, 0);
+	vpx_codec_err_t info_result = vpx_codec_get_stream_info(&codecPointer->context_alpha, &codecPointer->stream_info_alpha);
+			
+	return decode_result;
+}
+
 vpx_image_t *_vpx_codec_get_frame(HxWebmContext *codecPointer) {
 	//printf("_vpx_codec_get_frame: %p\n", codecPointer->iter);
 	return vpx_codec_get_frame(&codecPointer->context, &codecPointer->iter);
+}
+
+vpx_image_t *_vpx_codec_get_frame_alpha(HxWebmContext *codecPointer) {
+	//printf("_vpx_codec_get_frame: %p\n", codecPointer->iter);
+	return vpx_codec_get_frame(&codecPointer->context_alpha, &codecPointer->iter_alpha);
 }
 
 
@@ -326,11 +347,13 @@ extern "C" {
 		return result;
 	}
 	
-	DEFINE_FUNC_2(hx_vpx_codec_decode, codec_context_value, data_buffer_value) {
+	DEFINE_FUNC_3(hx_vpx_codec_decode, codec_context_value, data_buffer_value, data_alpha_buffer_value) {
 		HxWebmContext* codecPointer = _get_codec_context_from_value(codec_context_value);
 		buffer data_buffer = get_buffer_from_value(data_buffer_value);
+        buffer data_alpha_buffer = get_buffer_from_value(data_alpha_buffer_value);
 
 		vpx_codec_err_t result = check_result(_vpx_codec_decode(codecPointer, buffer_data(data_buffer), buffer_size(data_buffer)));
+		vpx_codec_err_t result_alpha = check_result(_vpx_codec_decode_alpha(codecPointer, buffer_data(data_alpha_buffer), buffer_size(data_alpha_buffer)));
 
 		value array = alloc_array(3);
 		val_array_set_i(array, 0, alloc_int(codecPointer->stream_info.w));
@@ -341,6 +364,7 @@ extern "C" {
 	
 	DEFINE_FUNC_1(hx_vpx_codec_get_frame, codec_context_value) {
 		vpx_image_t *img = _vpx_codec_get_frame(_get_codec_context_from_value(codec_context_value));
+		vpx_image_t *imgAlpha = _vpx_codec_get_frame_alpha(_get_codec_context_from_value(codec_context_value));
 		//printf("img: %p\n", img);
 		if (img == NULL) return alloc_null();
 		
@@ -362,14 +386,14 @@ extern "C" {
 			img->planes[0],
 			img->planes[1],
 			img->planes[2],
-			img->planes[0],
+			imgAlpha->planes[0],
 			display_width,
 			display_width,
 			display_height,
 			(uint32*)output_data,
 			img->stride[0],
 			img->stride[1],
-			img->stride[0]
+			imgAlpha->stride[0]
 		);
 		
 		value array = alloc_array(3);
@@ -926,28 +950,27 @@ extern "C" {
 						//printf("\t\t\tBlock\t\t:%s,%s,%15lld\n", (trackType == mkvparser::Track::kVideo) ? "V" : "A", pBlock->IsKey() ? "I" : "P", time_ns); fflush(stdout);
 
 						for (int i = 0; i < frameCount; ++i) {
-							const Block::Frame& theFrame2 = pBlock->GetFrame(i);
-							const Block::Frame& theFrame = pBlock->AdditionalFrame();
+							const Block::Frame& theFrame = pBlock->GetFrame(i);
 							const long size = theFrame.len;
 							const long long offset = theFrame.pos;
 
-                            const long size2 = theFrame2.len;
-							const long long offset2 = theFrame2.pos;
+							const Block::Frame& theFrameAlpha = pBlock->AdditionalFrame(); // We don't support multiple frame yet (don't think chromium does either?)
+                            const long sizeAlpha = theFrameAlpha.len;
+							const long long offsetAlpha = theFrameAlpha.pos;
 							
-                            printf("--------------\n");
-                            printf("%d, %d\n", (int)offset, (int)size);
-                            printf("%d, %d\n", (int)offset2, (int)size2);
-
 #if 1
 							//printf("%d, %d\n", (int)size, (int)offset); fflush(stdout);
 							
 							buffer frame_data = alloc_buffer_len(size);
 							theFrame.Read(reader, (unsigned char *)buffer_data(frame_data));
+                            
+							buffer frame_alpha_data = alloc_buffer_len(sizeAlpha);
+							theFrameAlpha.Read(reader, (unsigned char *)buffer_data(frame_alpha_data));
 							
 							if (trackType == mkvparser::Track::kVideo) {
 								//printf("%lld\n", time_ns);
 
-								val_call2(decode_video, alloc_float((double)(time_ns / 1000) / (double)(1000 * 1000)), buffer_val(frame_data));
+								val_call3(decode_video, alloc_float((double)(time_ns / 1000) / (double)(1000 * 1000)), buffer_val(frame_data), buffer_val(frame_alpha_data));
 							} else if (this->enableAudio && trackType == mkvparser::Track::kAudio) {
 								vorbisDecoder->parseData((unsigned char *)buffer_data(frame_data), buffer_size(frame_data), time_ns, decode_audio);
 							}

@@ -21,9 +21,9 @@ class VpxDecoder
 		context = hx_vpx_codec_dec_init();
 	}
 	
-	public function decode(data:BytesData)
+	public function decode(data:BytesData, alphaData:BytesData)
 	{
-		hx_vpx_codec_decode(context, data);
+		hx_vpx_codec_decode(context, data, alphaData);
 	}
 	
 	public function getAndRenderFrame(bitmapData:BitmapData)
@@ -49,6 +49,6 @@ class VpxDecoder
 	
 	static var hx_vpx_codec_iface_name:Void -> String = Lib.load("extension-webm", "hx_vpx_codec_iface_name", 0);
 	static var hx_vpx_codec_dec_init:Void -> Dynamic = Lib.load("extension-webm", "hx_vpx_codec_dec_init", 0);
-	static var hx_vpx_codec_decode:Dynamic -> BytesData -> Array<Int> = Lib.load("extension-webm", "hx_vpx_codec_decode", 2);
+	static var hx_vpx_codec_decode:Dynamic -> BytesData -> BytesData -> Array<Int> = Lib.load("extension-webm", "hx_vpx_codec_decode", 3);
 	static var hx_vpx_codec_get_frame:Dynamic -> Array<Dynamic> = Lib.load("extension-webm", "hx_vpx_codec_get_frame", 1);
 }
