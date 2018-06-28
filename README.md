@@ -29,3 +29,5 @@ player.play();
 
 addChild(player);
 ```
+
+For alpha channel with `ffmpeg` using a sequence of PNG `ffmpeg -y -framerate 24 -f image2 -i image_%04d.png -c:v libvpx -pix_fmt yuva420p -auto-alt-ref 0 movie.webm`
