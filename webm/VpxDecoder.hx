@@ -13,6 +13,8 @@ class VpxDecoder
 	{
 		return hx_vpx_codec_iface_name();
 	}
+
+    public var frameHandler:Bytes->Void = null;
 	
 	private var context:Dynamic;
 	
@@ -39,11 +41,16 @@ class VpxDecoder
 			//bitmapData.image.format = BGRA32;
 			//bitmapData.image.version++;
 
-			var byteArray:ByteArray = ByteArray.fromBytes(Bytes.ofData(info[2]));
 
-			bitmapData.lock();
-			bitmapData.setPixels(bitmapData.rect, byteArray);
-			bitmapData.unlock();
+            if (frameHandler != null) {
+                frameHandler(Bytes.ofData(info[2]));
+            } else {
+                var byteArray:ByteArray = ByteArray.fromBytes(Bytes.ofData(info[2]));
+
+                bitmapData.lock();
+                bitmapData.setPixels(bitmapData.rect, byteArray);
+                bitmapData.unlock();
+            }
 		}
 	}
 	

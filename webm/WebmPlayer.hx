@@ -39,7 +39,10 @@ class WebmPlayer extends Bitmap
 	var renderedCount = 0;
     var loop = false;
 
-	public function new(io:WebmIo, soundEnabled:Bool = false, loop:Bool = true)
+    public var width2:Int;
+    public var height2:Int;
+
+	public function new(io:WebmIo, soundEnabled:Bool = false, loop:Bool = true, ?frameHandler:Bytes->Void = null)
 	{
 		super(null);
 		
@@ -57,11 +60,16 @@ class WebmPlayer extends Bitmap
 		smoothing = true;
 
 		vpxDecoder = new VpxDecoder();
+        vpxDecoder.frameHandler = frameHandler;
 
 		webmDecoder = hx_webm_decoder_create(io.io, soundEnabled);
 		
 		var info = hx_webm_decoder_get_info(webmDecoder);
-		bitmapData = new BitmapData(info[0].int(), info[1].int(), true, 0x00000000);
+
+        width2 = info[0].int();
+        height2 = info[1].int();
+		//bitmapData = new BitmapData(info[0].int(), info[1].int(), true, 0x00000000);
+
 		frameRate = info[2] == 0 ? 24.0 : info[2]; // TODO: Figure out why frameRate is always 0
 		duration = info[3];
 
