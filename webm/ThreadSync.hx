@@ -10,8 +10,10 @@ typedef ThreadMessage = {
 
 @:enum
 abstract ThreadMessageReceived(Int) from Int to Int {
-    var MAIN_THREAD = 1;
-    var PARAMS      = 2;
+    var MainThread  = -1;
+    var Params      = 2;
+    var Log         = 3;
+    var Kill        = 4;
 }
 
 // Create new Thread and makes sure message are sent to the proper instance
@@ -39,11 +41,26 @@ class ThreadSync {
         var messageDynamic:Dynamic = Thread.readMessage(false);
         var message:ThreadMessage = messageDynamic;
         if (message != null) {
-            if (threads.exists(message.id)) {
+            if (message.id == MainThread) {
+                // Message for Main Thread
+                switch(message.type) {
+                    case Log: 
+                        trace('THREAD Log', message.data);
+                    case Kill: 
+                        trace('THREAD Kill', message.data);
+                        if (threads.exists(message.data)) {
+                            var thread = threads.get(message.data);
+                            thread.clean();
+                            threads.remove(message.data);
+                        } else {
+                            trace('THREAD already Killed?????', message.data);
+                        }
+                    default: 
+                }
+            } else if (threads.exists(message.id)) {
                 var thread = threads.get(message.id);
                 thread.sent(message.type, message.data);
             } else {
-                // TODO: Re-send the message in hope it will get catched by the proper class????
                 trace('Received Message from Main Thread but Process was killed? ${message.id}');
             }
         } else {
@@ -52,17 +69,15 @@ class ThreadSync {
         }
     }
 
-    public static function create(params:Dynamic, init:(Int->Dynamic->Void)->Dynamic->(Int->Dynamic->Bool), sent:Int->Dynamic->Void, dispose:Void->Void) {
+    public static function create(params:Dynamic, init:(Int->Dynamic->Void)->Dynamic->{fps:Float, received: (Int->Dynamic->Bool), processed: Void->Void, disposed: Void->Void}, sent:Int->Dynamic->Void) {
         ThreadSync.init();
         
         var thread = new ThreadProcess(ThreadSync.id++);
         threads.set(thread.id, thread);
 
-        return thread.create(params, init, sent, function() {
-            thread.clean();
-            threads.remove(thread.id);
-            dispose();
-        });
+        trace('Thread ${thread.id} started!');
+
+        return thread.create(params, init, sent);
     }
 }
 
@@ -82,44 +97,56 @@ class ThreadProcess {
     }
 
     public function clean() {
+        sent(-1, {});
+
         thread = null;
         sent = null;
-
-        trace('Thread $id killed!');
     }
 
-    public function create(params:Dynamic, init:(Int->Dynamic->Void)->Dynamic->(Int->Dynamic->Bool), sent:Int->Dynamic->Void, dispose:Void->Void) {
+    public function create(params:Dynamic, init:(Int->Dynamic->Void)->Dynamic->{fps:Float, received: (Int->Dynamic->Bool), processed: Void->Void, disposed: Void->Void}, sent:Int->Dynamic->Void) {
         var id = this.id;
-
-        // TODO: Should trace be sent to Main Thread!?!?!?!?
-        trace('Thread $id started!');
 
         this.sent = sent;
         thread = Thread.create(function() {
+            var dispose = function() {};
+            var process = function() {};
+            var main:Thread = null;
+            
+            function log(message:String) {
+                if (main != null) {
+                    main.sendMessage({id: MainThread, type: Log, data: message});
+                }
+            }
+
             try {
                 // Get main Thread
-                function readMessage(type:Int) {
+                function readMessage(type:Int):Dynamic {
                     var message:ThreadMessage = Thread.readMessage(true);
                     if (message != null) {
                         if (message.id == id && message.type == type) {
                             return message.data;
                         } else {
-                            trace('Received valid message but of ${message.type != type ? 'wrong type ${message.type}' : ''} ${message.id != id ? 'wrong id ${message.id}' : ''}');
+                            log('Received valid message but of ${message.type != type ? 'wrong type ${message.type}' : ''} ${message.id != id ? 'wrong id ${message.id}' : ''}');
                         }
                     } else {
-                        trace('Received invalid message to Thread Process ${id}');
+                        log('Received invalid message to Thread Process ${id}');
                     }
 
                     return null;
                 } 
 
-                var main = readMessage(MAIN_THREAD);
+                main = readMessage(MainThread);
                 if (main != null) {
-                    var params = readMessage(PARAMS);
+                    var params:String = readMessage(Params);
                     if (params != null) {
-                        var received = init(function(type, data) {
+                        var handlers = init(function(type, data) {
                             main.sendMessage({id: id, type: type, data: data});
                         }, params);
+
+                        var received = handlers.received;
+                        dispose = handlers.disposed;
+                        process = handlers.processed;
+                        var fps = handlers.fps;
 
                         // Listeners
                         var done = false;
@@ -127,7 +154,7 @@ class ThreadProcess {
                         // Process websocket
                         var i = 0;
                         while(!done) {
-                            Sys.sleep(0.1);
+                            Sys.sleep(1 / fps);
 
                             // Read message from current thread, stop if we get "close" otherwise send message to Socket
                             var msgDynamic:Dynamic = Thread.readMessage(false);
@@ -136,28 +163,36 @@ class ThreadProcess {
                                 if (msg.id == id) {
                                     if (received(msg.type, msg.data)) done = true;
                                 } else {
-                                    trace('Message Sent to wrong Thread Process ${id}');
+                                    log('Message Sent to wrong Thread Process ${id}');
                                 }
                             } else {
-                                if (msg == null && msgDynamic != null) trace('Invalid Message sent to Thread Process ${id}');
+                                if (msg == null && msgDynamic != null) log('Invalid Message sent to Thread Process ${id}');
                             }
+
+                            process();
                         }
                     } else {
-                        trace('Invalid Params sent to Thread Process ${id}');
+                        log('Invalid Params sent to Thread Process ${id}');
                     }
                 } else {
-                        trace('Invalid Main Thread sent to Thread Process ${id}');
-                    }
+                    log('Invalid Main Thread sent to Thread Process ${id}');
+                }
             } catch (e:Dynamic) {
                 // TODO: Maybe tell the class handling the processs about the error?
-                trace('Catched error during processing of Thread Process ${id}', e);
+                log('Catched error during processing of Thread Process ${id}, ${e}');
             }
 
+            log('Thread Process ${id} finished processing!');
+
             dispose();
+
+            if (main != null) {
+                main.sendMessage({id: MainThread, type: Kill, data: id});
+            }
         });
 
-        thread.sendMessage({id: id, type: MAIN_THREAD, data: Thread.current()});
-        thread.sendMessage({id: id, type: PARAMS, data: params});
+        thread.sendMessage({id: id, type: MainThread, data: Thread.current()});
+        thread.sendMessage({id: id, type: Params, data: params});
 
         return this;
     }

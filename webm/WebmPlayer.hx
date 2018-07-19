@@ -3,22 +3,21 @@ package webm;
 import cpp.Lib;
 import haxe.io.Bytes;
 import haxe.io.BytesData;
-import openfl.display.Bitmap;
-import openfl.display.BitmapData;
-import openfl.display.PixelSnapping;
-import openfl.events.Event;
+
+// Making the lib openfl agnostic
+/*import openfl.events.Event;
 import openfl.events.SampleDataEvent;
 import openfl.media.Sound;
 import openfl.media.SoundChannel;
 import openfl.utils.ByteArray;
-import openfl.utils.Endian;
+import openfl.utils.Endian;*/
 
 using Std;
 
-class WebmPlayer extends Bitmap
+class WebmPlayer
 {
-	static inline var BYTES_PER_SAMPLE = 4 * 8192;
-	static var BLANK_BYTES:ByteArray;
+	/*static inline var BYTES_PER_SAMPLE = 4 * 8192;
+	static var BLANK_BYTES:ByteArray;*/
 	static var SKIP_STEP_LIMIT = 0;
 
 	public var frameRate(default, null):Float;
@@ -26,9 +25,9 @@ class WebmPlayer extends Bitmap
 
 	var vpxDecoder:VpxDecoder;
 	var webmDecoder:Dynamic;
-	var outputSound:ByteArray;
+	/*var outputSound:ByteArray;
 	var soundChannel:SoundChannel;
-	var sound:Sound;
+	var sound:Sound;*/
 	var soundEnabled:Bool;
 	var skippedSteps = 0;
 	
@@ -39,25 +38,20 @@ class WebmPlayer extends Bitmap
 	var renderedCount = 0;
     var loop = false;
 
-    public var width2:Int;
-    public var height2:Int;
+    public var width:Int;
+    public var height:Int;
 
 	public function new(io:WebmIo, soundEnabled:Bool = false, loop:Bool = true, ?frameHandler:Bytes->Void = null)
 	{
-		super(null);
-		
         this.loop = loop;
 		this.soundEnabled = soundEnabled;
 
-		if (soundEnabled && BLANK_BYTES == null)
+		/*if (soundEnabled && BLANK_BYTES == null)
 		{
 			BLANK_BYTES = new ByteArray();
 			for (i in 0...BYTES_PER_SAMPLE)
 				BLANK_BYTES.writeByte(0);
-		}
-
-		pixelSnapping = PixelSnapping.AUTO;
-		smoothing = true;
+		}*/
 
 		vpxDecoder = new VpxDecoder();
         vpxDecoder.frameHandler = frameHandler;
@@ -66,21 +60,20 @@ class WebmPlayer extends Bitmap
 		
 		var info = hx_webm_decoder_get_info(webmDecoder);
 
-        width2 = info[0].int();
-        height2 = info[1].int();
-		//bitmapData = new BitmapData(info[0].int(), info[1].int(), true, 0x00000000);
+        width = info[0].int();
+        height = info[1].int();
 
 		frameRate = info[2] == 0 ? 24.0 : info[2]; // TODO: Figure out why frameRate is always 0
 		duration = info[3];
 
-		if (soundEnabled)
+		/*if (soundEnabled)
 		{
 			outputSound = new ByteArray();
 			outputSound.endian = Endian.LITTLE_ENDIAN;
-		}
+		}*/
 	}
 
-	public function generateSound(e:SampleDataEvent)
+	/*public function generateSound(e:SampleDataEvent)
 	{
 		if (e.data == null)
 			e.data = new ByteArray();
@@ -107,7 +100,7 @@ class WebmPlayer extends Bitmap
 				outputSound.clear();
 			}
 		}
-	}
+	}*/
 	
 	public function getElapsedTime():Float
 	{
@@ -120,7 +113,7 @@ class WebmPlayer extends Bitmap
 		renderedCount = 0;
 		lastDecodedVideoFrame = 0;
 		hx_webm_decoder_restart(webmDecoder);
-		this.dispatchEvent(new Event(WebmEvent.RESTART));
+		//this.dispatchEvent(new Event(WebmEvent.RESTART));
 		play();
 	}
 	
@@ -130,42 +123,48 @@ class WebmPlayer extends Bitmap
 		{
 			startTime = haxe.Timer.stamp();
 
-			if (soundEnabled)
+			/*if (soundEnabled)
 			{
 				sound = new Sound();
 				sound.addEventListener(SampleDataEvent.SAMPLE_DATA, generateSound);
 				soundChannel = sound.play();
-			}
+			}*/
 		
-			addEventListener(Event.ENTER_FRAME, onSpriteEnterFrame);
+			//addEventListener(Event.ENTER_FRAME, onSpriteEnterFrame);
 			playing = true;
 
-			dispatchEvent(new WebmEvent(WebmEvent.PLAY));
+			//dispatchEvent(new WebmEvent(WebmEvent.PLAY));
 		}
 	}
+
+    public function process() {
+        skippedSteps = 0;
+		stepVideoFrame();
+    }
 
 	public function stop(?pRestart:Bool = false)
 	{
 		if (playing)
 		{
-			if (soundEnabled)
+			/*if (soundEnabled)
 			{
 				this.sound.removeEventListener(SampleDataEvent.SAMPLE_DATA, generateSound);
 				this.sound.close();
-			}
+			}*/
+
 			playing = false;
 			if (!pRestart) {
-                dispatchEvent(new WebmEvent(WebmEvent.STOP));
+                //dispatchEvent(new WebmEvent(WebmEvent.STOP));
 			    dispose();
             }
 		}
 	}
 	
-	function onSpriteEnterFrame(e:Event)
+	/*function onSpriteEnterFrame(e:Event)
 	{
 		skippedSteps = 0;
 		stepVideoFrame();
-	}
+	}*/
 	
 	function stepVideoFrame()
 	{
@@ -181,7 +180,7 @@ class WebmPlayer extends Bitmap
 		
 		if (!hx_webm_decoder_has_more(webmDecoder))
 		{
-			dispatchEvent(new WebmEvent(WebmEvent.COMPLETE));
+			//dispatchEvent(new WebmEvent(WebmEvent.COMPLETE));
 			if (loop) {
                 restart();
             } else {
@@ -204,23 +203,24 @@ class WebmPlayer extends Bitmap
 		}
 		else
 		{
-			vpxDecoder.getAndRenderFrame(bitmapData);
+			vpxDecoder.getAndRenderFrame();
 		}
 	}
 	
 	function outputAudioFrame(time:Float, data:BytesData)
 	{
 		if (!soundEnabled) return;
-		outputSound.position = outputSound.length;
+		
+        /*outputSound.position = outputSound.length;
 		outputSound.writeBytes(ByteArray.fromBytes(Bytes.ofData(data)));
-		outputSound.position = 0;
+		outputSound.position = 0;*/
 	}
 	
 	function dispose()
 	{
-		removeEventListener(Event.ENTER_FRAME, onSpriteEnterFrame);
+		//removeEventListener(Event.ENTER_FRAME, onSpriteEnterFrame);
 		
-		if (sound != null)
+		/*if (sound != null)
 		{
 			sound.removeEventListener(SampleDataEvent.SAMPLE_DATA, generateSound);
 			sound = null;
@@ -230,13 +230,7 @@ class WebmPlayer extends Bitmap
 		{
 			soundChannel.stop();
 			soundChannel = null;
-		}
-		
-		if (bitmapData != null)
-		{
-			bitmapData.dispose();
-			bitmapData = null;
-		}
+		}*/
 	}
 	
 	static var hx_webm_decoder_create:Dynamic -> Bool -> Dynamic = Lib.load("extension-webm", "hx_webm_decoder_create", 2);

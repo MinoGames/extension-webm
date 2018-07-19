@@ -3,8 +3,6 @@ package webm;
 import cpp.Lib;
 import haxe.io.Bytes;
 import haxe.io.BytesData;
-import openfl.display.BitmapData;
-import openfl.utils.ByteArray;
 
 class VpxDecoder
 {	
@@ -28,7 +26,7 @@ class VpxDecoder
 		hx_vpx_codec_decode(context, data, alphaData);
 	}
 	
-	public function getAndRenderFrame(bitmapData:BitmapData)
+	public function getAndRenderFrame()
 	{
 		var info = hx_vpx_codec_get_frame(context);
 		
@@ -41,15 +39,8 @@ class VpxDecoder
 			//bitmapData.image.format = BGRA32;
 			//bitmapData.image.version++;
 
-
             if (frameHandler != null) {
                 frameHandler(Bytes.ofData(info[2]));
-            } else {
-                var byteArray:ByteArray = ByteArray.fromBytes(Bytes.ofData(info[2]));
-
-                bitmapData.lock();
-                bitmapData.setPixels(bitmapData.rect, byteArray);
-                bitmapData.unlock();
             }
 		}
 	}

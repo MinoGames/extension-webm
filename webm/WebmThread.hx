@@ -45,6 +45,14 @@ class WebmThread extends Bitmap {
         return webm;
     }
 
+    public function getId() {
+        #if (sys && !neko && !disableThread2)
+        return thread.id;
+        #else
+        return -1;
+        #end
+    }
+
     public function new(path:String) {
         super(null, PixelSnapping.AUTO, true);
 
@@ -58,9 +66,11 @@ class WebmThread extends Bitmap {
             });
             webm.play();
 
-            sendMessage(Info, { width: webm.width2, height: webm.height2 });
+            sendMessage(Info, { width: webm.width, height: webm.height });
 
-            return function(type, data) {
+            return {
+            fps: webm.frameRate,    
+            received: function(type, data) {
                 // Message Received from Thread
                 return switch(type) {
                     case Play : 
@@ -68,13 +78,16 @@ class WebmThread extends Bitmap {
                         false;
                     case Stop : 
                         webm.stop();
-                        webm.dispose();
                         true;
                     default: 
                         false;
                 }
                 // -- Received
-            };
+            }, processed: function() {
+                webm.process();
+            }, disposed: function() {
+                webm.dispose();
+            }};
             // -- Initialization
         }, function(type, data) {
             // Message Sent from Thread
@@ -84,17 +97,18 @@ class WebmThread extends Bitmap {
                     smoothing = true;
                 case Frame : 
                     if (bitmapData != null) onFrame(cast data);
+                case -1:
+                    if (bitmapData != null) bitmapData.dispose();
             }
             // -- Sent
-        }, function() {
-            // Dispose
-            // TODO: Nothing to do here sine this is happening only on Stop, but should be moved to inside init instead
         });
         #else
         // Create WebSocket object
         webm = new WebmPlayer(new WebmIoFile(path), false, true, function(bytes) {
             onFrame(bytes);
         });
+        bitmapData = new BitmapData(webm.width2, webm.width2, true, 0x00000000);
+        webm.play();
         #end
     }
 
@@ -126,7 +140,10 @@ class WebmThread extends Bitmap {
     }
 
     public function dispose() {
-        destroy();
+        stop();
+
+        if (bitmapData != null) bitmapData.dispose();
+        bitmapData = null;
     }
 
     public function destroy() {
