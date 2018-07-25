@@ -17,14 +17,15 @@ import webm.ThreadSync;
 
 @:enum
 abstract WebmSent(Int) from Int to Int {
-    var Frame = 100;
-    var Info  = 103;
+    var Frame     = 100;
+    var Info      = 103;
+    var FrameInfo = 104;
 }
 
 @:enum
 abstract WebmReceived(Int) from Int to Int {
-    var Play = 400;
-    var Stop = 401;
+    var Play      = 400;
+    var Stop      = 401;
 }
 
 @:access(webm.WebmPlayer)
@@ -36,9 +37,11 @@ class WebmThread extends Bitmap {
     var webm:WebmPlayer;
     #end
 
-    public var lastRequestedVideoFrame = 0;
-    public var frameRate = 24;
-    public var duration = 5;
+    public var lastRequestedVideoFrame:Float = 0;
+    public var frameRate:Float = 24;
+    public var duration:Float = 5;
+
+    public var loaded:Void->Void = null;
 
     public static function create(path:String) {
         var webm = new WebmThread(path);
@@ -66,7 +69,7 @@ class WebmThread extends Bitmap {
             });
             webm.play();
 
-            sendMessage(Info, { width: webm.width, height: webm.height });
+            sendMessage(Info, { width: webm.width, height: webm.height, frameRate: webm.frameRate, duration: webm.duration });
 
             return {
             fps: webm.frameRate,    
@@ -85,20 +88,34 @@ class WebmThread extends Bitmap {
                 // -- Received
             }, processed: function() {
                 webm.process();
+                sendMessage(FrameInfo, { lastRequestedVideoFrame: webm.lastRequestedVideoFrame });
             }, disposed: function() {
                 webm.dispose();
             }};
             // -- Initialization
-        }, function(type, data) {
+        }, function(type:Int, data:Dynamic) {
             // Message Sent from Thread
             switch(type) {
+                case FrameInfo:
+                    lastRequestedVideoFrame = data.lastRequestedVideoFrame;
                 case Info  : 
+                    frameRate = data.frameRate;
+                    duration = data.duration;
+
                     bitmapData = new BitmapData(data.width, data.width, true, 0x00000000);
                     smoothing = true;
+
+                    if (loaded != null) loaded();
                 case Frame : 
+                    // Copy bytes
+                    // TODO: Do it from the Thread instead???
+                    var bytes = haxe.io.Bytes.alloc(data.length);
+                    bytes.blit(0, data, 0, data.length);
+
                     if (bitmapData != null) onFrame(cast data);
                 case -1:
-                    if (bitmapData != null) bitmapData.dispose();
+                    // TODO: Too agressive?
+                    //if (bitmapData != null) bitmapData.dispose();
             }
             // -- Sent
         });
@@ -107,8 +124,24 @@ class WebmThread extends Bitmap {
         webm = new WebmPlayer(new WebmIoFile(path), false, true, function(bytes) {
             onFrame(bytes);
         });
-        bitmapData = new BitmapData(webm.width2, webm.width2, true, 0x00000000);
+
+        duration = webm.duration;
+        frameRate = webm.frameRate;
+
+        bitmapData = new BitmapData(webm.width, webm.width, true, 0x00000000);
         webm.play();
+
+        addEventListener(Event.ENTER_FRAME, enterFrameHandler);
+        // TODO: Add ENTER_FRAME for processing
+        #end
+    }
+
+    function enterFrameHandler(e) {
+        #if (sys && !neko && !disableThread2)
+        
+        #else
+        webm.process();
+        lastRequestedVideoFrame = webm.lastRequestedVideoFrame;
         #end
     }
 
@@ -127,6 +160,9 @@ class WebmThread extends Bitmap {
         bitmapData.setPixels(bitmapData.rect, byteArray);
         bitmapData.unlock();
 
+        // TODO: Too aggressive?
+        //byteArray.clear();
+
         smoothing = true;
     }
 
@@ -142,12 +178,12 @@ class WebmThread extends Bitmap {
     public function dispose() {
         stop();
 
-        if (bitmapData != null) bitmapData.dispose();
-        bitmapData = null;
-    }
+        loaded = null;
 
-    public function destroy() {
-        // Stop
-        stop();
+        // TODO: Too aggressive?
+        //if (bitmapData != null) bitmapData.dispose();
+        //bitmapData = null;
+
+        removeEventListener(Event.ENTER_FRAME, enterFrameHandler);
     }
 }

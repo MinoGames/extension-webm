@@ -231,6 +231,8 @@ class WebmPlayer
 			soundChannel.stop();
 			soundChannel = null;
 		}*/
+
+        //vpxDecoder.destroy();
 	}
 	
 	static var hx_webm_decoder_create:Dynamic -> Bool -> Dynamic = Lib.load("extension-webm", "hx_webm_decoder_create", 2);

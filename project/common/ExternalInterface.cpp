@@ -334,6 +334,8 @@ extern "C" {
 	}
 	
 	static void release_HxWebmContext(value inValue) {
+        printf("DESTROY VP8!!!!!!!!!!!!!!!!!!!!!");
+
 		HxWebmContext* codecPointer = _get_codec_context_from_value(inValue);
 		_vpx_codec_destroy(codecPointer);
 		free(codecPointer);
@@ -361,6 +363,13 @@ extern "C" {
 		val_array_set_i(array, 2, alloc_int(codecPointer->stream_info.is_kf));
 		return array;
 	}
+
+    DEFINE_FUNC_1(hx_vpx_codec_destroy, codec_context_value) {
+        HxWebmContext* codecPointer = _get_codec_context_from_value(codec_context_value);
+		_vpx_codec_destroy(codecPointer);
+		free(codecPointer);
+        return NULL;
+    }
 	
 	DEFINE_FUNC_1(hx_vpx_codec_get_frame, codec_context_value) {
 		vpx_image_t *img = _vpx_codec_get_frame(_get_codec_context_from_value(codec_context_value));

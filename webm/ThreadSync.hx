@@ -154,7 +154,7 @@ class ThreadProcess {
                         // Process websocket
                         var i = 0;
                         while(!done) {
-                            Sys.sleep(1 / fps);
+                            Sys.sleep(1 / fps * 0.75);
 
                             // Read message from current thread, stop if we get "close" otherwise send message to Socket
                             var msgDynamic:Dynamic = Thread.readMessage(false);

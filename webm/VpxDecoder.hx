@@ -21,6 +21,10 @@ class VpxDecoder
 		context = hx_vpx_codec_dec_init();
 	}
 	
+    public function destroy() {
+        hx_vpx_codec_destroy(context);
+    }
+
 	public function decode(data:BytesData, alphaData:BytesData)
 	{
 		hx_vpx_codec_decode(context, data, alphaData);
@@ -49,4 +53,5 @@ class VpxDecoder
 	static var hx_vpx_codec_dec_init:Void -> Dynamic = Lib.load("extension-webm", "hx_vpx_codec_dec_init", 0);
 	static var hx_vpx_codec_decode:Dynamic -> BytesData -> BytesData -> Array<Int> = Lib.load("extension-webm", "hx_vpx_codec_decode", 3);
 	static var hx_vpx_codec_get_frame:Dynamic -> Array<Dynamic> = Lib.load("extension-webm", "hx_vpx_codec_get_frame", 1);
+    static var hx_vpx_codec_destroy:Dynamic -> Dynamic = Lib.load("extension-webm", "hx_vpx_codec_destroy", 1);
 }
