@@ -38,35 +38,43 @@ class ThreadSync {
 
     // Call this every frame
     public static function process() {
-        var messageDynamic:Dynamic = Thread.readMessage(false);
-        var message:ThreadMessage = messageDynamic;
-        if (message != null) {
-            if (message.id == MainThread) {
-                // Message for Main Thread
-                switch(message.type) {
-                    case Log: 
-                        trace('THREAD Log', message.data);
-                    case Kill: 
-                        trace('THREAD Kill', message.data);
-                        if (threads.exists(message.data)) {
-                            var thread = threads.get(message.data);
-                            thread.clean();
-                            threads.remove(message.data);
-                        } else {
-                            trace('THREAD already Killed?????', message.data);
-                        }
-                    default: 
+        var messageRead = 0;
+        var message:ThreadMessage = null;
+        do {
+            messageRead++;
+
+            var messageDynamic:Dynamic = Thread.readMessage(false);
+            message = messageDynamic;
+            if (message != null) {
+                if (message.id == MainThread) {
+                    // Message for Main Thread
+                    switch(message.type) {
+                        case Log: 
+                            trace('THREAD Log', message.data);
+                        case Kill: 
+                            trace('THREAD Kill', message.data);
+                            if (threads.exists(message.data)) {
+                                var thread = threads.get(message.data);
+                                thread.clean();
+                                threads.remove(message.data);
+                            } else {
+                                trace('THREAD already Killed?????', message.data);
+                            }
+                        default: 
+                    }
+                } else if (threads.exists(message.id)) {
+                    var thread = threads.get(message.id);
+                    thread.sent(message.type, message.data);
+                } else {
+                    trace('Received Message from Main Thread but Process was killed? ${message.id}');
                 }
-            } else if (threads.exists(message.id)) {
-                var thread = threads.get(message.id);
-                thread.sent(message.type, message.data);
             } else {
-                trace('Received Message from Main Thread but Process was killed? ${message.id}');
+                // TODO: Re-send the message in hope it will get catched by the proper class????
+                if (message == null && messageDynamic != null) trace('Received Invalid Message from Main Thread');
             }
-        } else {
-            // TODO: Re-send the message in hope it will get catched by the proper class????
-            if (message == null && messageDynamic != null) trace('Received Invalid Message from Main Thread');
-        }
+        } while(message != null);
+
+        trace('messageRead: $messageRead');
     }
 
     public static function create(params:Dynamic, init:(Int->Dynamic->Void)->Dynamic->{fps:Float, received: (Int->Dynamic->Bool), processed: Void->Void, disposed: Void->Void}, sent:Int->Dynamic->Void) {
@@ -151,7 +159,7 @@ class ThreadProcess {
                         // Listeners
                         var done = false;
 
-                        // Process websocket
+                        // Process
                         var i = 0;
                         while(!done) {
                             Sys.sleep(1 / fps * 0.75);

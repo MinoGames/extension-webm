@@ -102,20 +102,22 @@ class WebmThread extends Bitmap {
                     frameRate = data.frameRate;
                     duration = data.duration;
 
-                    bitmapData = new BitmapData(data.width, data.width, true, 0x00000000);
+                    bitmapData = new BitmapData(data.width, data.height, true, 0x00000000);
                     smoothing = true;
 
                     if (loaded != null) loaded();
                 case Frame : 
                     // Copy bytes
                     // TODO: Do it from the Thread instead???
-                    var bytes = haxe.io.Bytes.alloc(data.length);
-                    bytes.blit(0, data, 0, data.length);
+                    
+                    //var bytes = haxe.io.Bytes.alloc(data.length);
+                    //bytes.blit(0, data, 0, data.length);
 
                     if (bitmapData != null) onFrame(cast data);
+                    //if (bitmapData != null) onFrame(bytes);
                 case -1:
                     // TODO: Too agressive?
-                    //if (bitmapData != null) bitmapData.dispose();
+                    if (bitmapData != null) bitmapData.dispose();
             }
             // -- Sent
         });
@@ -128,7 +130,7 @@ class WebmThread extends Bitmap {
         duration = webm.duration;
         frameRate = webm.frameRate;
 
-        bitmapData = new BitmapData(webm.width, webm.width, true, 0x00000000);
+        bitmapData = new BitmapData(webm.width, webm.height, true, 0x00000000);
         webm.play();
 
         addEventListener(Event.ENTER_FRAME, enterFrameHandler);
@@ -161,7 +163,7 @@ class WebmThread extends Bitmap {
         bitmapData.unlock();
 
         // TODO: Too aggressive?
-        //byteArray.clear();
+        byteArray.clear();
 
         smoothing = true;
     }
@@ -181,8 +183,8 @@ class WebmThread extends Bitmap {
         loaded = null;
 
         // TODO: Too aggressive?
-        //if (bitmapData != null) bitmapData.dispose();
-        //bitmapData = null;
+        if (bitmapData != null) bitmapData.dispose();
+        bitmapData = null;
 
         removeEventListener(Event.ENTER_FRAME, enterFrameHandler);
     }
