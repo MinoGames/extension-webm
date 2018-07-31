@@ -87,7 +87,7 @@ static void die(const char *fmt, ...) {
 
     va_start(ap, fmt);
     vprintf(fmt, ap);
-    if(fmt[strlen(fmt)-1] != '\n')
+    if(fmt[strnlen(fmt,512)-1] != '\n')
         printf("\n");
     exit(EXIT_FAILURE);
 }
@@ -496,7 +496,7 @@ extern "C" {
 		static const wchar_t* utf8towcs(const char* str)
 		{
 		#if ANDROID
-			int len = strlen(str);
+			int len = strnlen(str,512);
 			wchar_t* const val = new wchar_t[len + 1];
 			for (int n = 0; n < len; n++) val[n] = str[n];
 			val[len] = 0;

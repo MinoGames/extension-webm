@@ -11,10 +11,10 @@ char *strdup(const char *inStr)
                 return NULL;
         }
         
-        outStr = _ogg_malloc(strlen(inStr) + 1);
+        outStr = _ogg_malloc(strnlen(inStr,512) + 1);
         
         if (outStr != NULL) {
-                strcpy(outStr, inStr);
+                strncpy(outStr, inStr,512);
         }
         
         return outStr;

@@ -121,7 +121,7 @@ static int svc_log(SvcContext *svc_ctx, SVC_LOG_LEVEL level,
     printf("%s", buf);
   } else {
     strncat(si->message_buffer, buf,
-            sizeof(si->message_buffer) - strlen(si->message_buffer) - 1);
+            sizeof(si->message_buffer) - strnlen(si->message_buffer,512) - 1);
   }
 
   if (level == SVC_LOG_ERROR) {

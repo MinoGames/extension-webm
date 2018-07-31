@@ -4416,14 +4416,14 @@ int Track::Info::CopyStr(char* Info::*str, Info& dst_) const {
   if (src == NULL)
     return 0;
 
-  const size_t len = strlen(src);
+  const size_t len = strnlen(src,512);
 
   dst = new (std::nothrow) char[len + 1];
 
   if (dst == NULL)
     return -1;
 
-  strcpy(dst, src);
+  strncpy(dst, src,512);
 
   return 0;
 }

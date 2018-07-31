@@ -2323,7 +2323,7 @@ TimeInMillis GetTimeInMillis() {
 // input is NULL.
 LPCWSTR String::AnsiToUtf16(const char* ansi) {
   if (!ansi) return NULL;
-  const int length = strlen(ansi);
+  const int length = strnlen(ansi,512);
   const int unicode_length =
       MultiByteToWideChar(CP_ACP, 0, ansi, length,
                           NULL, 0);
@@ -4737,7 +4737,7 @@ void XmlUnitTestResultPrinter::OutputXmlCDataSection(::std::ostream* stream,
       stream->write(
           segment, static_cast<std::streamsize>(next_segment - segment));
       *stream << "]]>]]&gt;<![CDATA[";
-      segment = next_segment + strlen("]]>");
+      segment = next_segment + strnlen("]]>",512);
     } else {
       *stream << segment;
       break;
@@ -4897,12 +4897,12 @@ std::string XmlUnitTestResultPrinter::TestPropertiesAsXmlAttributes(
 
 // Checks if str contains '=', '&', '%' or '\n' characters. If yes,
 // replaces them by "%xx" where xx is their hexadecimal value. For
-// example, replaces "=" with "%3D".  This algorithm is O(strlen(str))
+// example, replaces "=" with "%3D".  This algorithm is O(strnlen(str,512))
 // in both time and space -- important as the input str may contain an
 // arbitrarily long test failure message and stack trace.
 string StreamingListener::UrlEncode(const char* str) {
   string result;
-  result.reserve(strlen(str) + 1);
+  result.reserve(strnlen(str,512) + 1);
   for (char ch = *str; ch != '\0'; ch = *++str) {
     switch (ch) {
       case '%':
@@ -6145,7 +6145,7 @@ bool AlwaysTrue() {
 // past the prefix and returns true; otherwise leaves *pstr unchanged
 // and returns false.  None of pstr, *pstr, and prefix can be NULL.
 bool SkipPrefix(const char* prefix, const char** pstr) {
-  const size_t prefix_len = strlen(prefix);
+  const size_t prefix_len = strnlen(prefix,512);
   if (strncmp(*pstr, prefix, prefix_len) == 0) {
     *pstr += prefix_len;
     return true;
@@ -8380,7 +8380,7 @@ void RE::Init(const char* regex) {
 
   // Reserves enough bytes to hold the regular expression used for a
   // full match.
-  const size_t full_regex_len = strlen(regex) + 10;
+  const size_t full_regex_len = strnlen(regex,512) + 10;
   char* const full_pattern = new char[full_regex_len];
 
   snprintf(full_pattern, full_regex_len, "^(%s)$", regex);
@@ -8634,7 +8634,7 @@ void RE::Init(const char* regex) {
     return;
   }
 
-  const size_t len = strlen(regex);
+  const size_t len = strnlen(regex,512);
   // Reserves enough bytes to hold the regular expression used for a
   // full match: we need space to prepend a '^', append a '$', and
   // terminate the string with '\0'.
@@ -9323,7 +9323,7 @@ void PrintTo(const char* s, ostream* os) {
     *os << "NULL";
   } else {
     *os << ImplicitCast_<const void*>(s) << " pointing to ";
-    PrintCharsAsStringTo(s, strlen(s), os);
+    PrintCharsAsStringTo(s, strnlen(s,512), os);
   }
 }
 

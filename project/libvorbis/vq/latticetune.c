@@ -24,7 +24,7 @@
 #include "bookutil.h"
 
 static int strrcmp_i(char *s,char *cmp){
-  return(strncmp(s+strlen(s)-strlen(cmp),cmp,strlen(cmp)));
+  return(strncmp(s+strnlen(s,512)-strnlen(cmp,512),cmp,strnlen(cmp,512)));
 }
 
 /* This util takes a training-collected file listing codewords used in

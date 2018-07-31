@@ -287,7 +287,7 @@ static void parse_command_line(int argc, const char **argv_,
   }
 
   // There will be a space in front of the string options
-  if (strlen(string_options) > 0)
+  if (strnlen(string_options,512) > 0)
     vpx_svc_set_options(svc_ctx, string_options + 1);
 
   if (passes == 0 || passes == 1) {
@@ -333,7 +333,7 @@ static void parse_command_line(int argc, const char **argv_,
 
   // Check for unrecognized options
   for (argi = argv; *argi; ++argi)
-    if (argi[0][0] == '-' && strlen(argi[0]) > 1)
+    if (argi[0][0] == '-' && strnlen(argi[0],512) > 1)
       die("Error: Unrecognized option %s\n", *argi);
 
   if (argv[0] == NULL || argv[1] == 0) {

@@ -74,9 +74,9 @@ int main(int argc,char *argv[]){
 
   {
     char *ptr;
-    char *filename=_ogg_calloc(strlen(argv[1])+4,1);
+    char *filename=_ogg_calloc(strnlen(argv[1],512)+4,1);
 
-    strcpy(filename,argv[1]);
+    strncpy(filename,argv[1],512);
     in=fopen(filename,"r");
     if(!in){
       fprintf(stderr,"Could not open input file %s\n",filename);

@@ -124,7 +124,7 @@ void cell_spacing(codebook *c){
 
 void process_postprocess(codebook **bs,char *basename){
   int i,k,book;
-  char *buffer=alloca(strlen(basename)+80);
+  char *buffer=alloca(strnlen(basename,512)+80);
 
   fprintf(stderr,"Done.  Processed %ld data points:\n\n",
           (long)count);

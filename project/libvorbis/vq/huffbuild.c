@@ -150,8 +150,8 @@ int main(int argc, char *argv[]){
 
     /* save the book */
     {
-      char *buffer=alloca(strlen(base)+5);
-      strcpy(buffer,base);
+      char *buffer=alloca(strnlen(base,512)+5);
+      strncpy(buffer,base,512);
       strcat(buffer,".vqh");
       file=fopen(buffer,"w");
       if(!file){

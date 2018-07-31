@@ -313,7 +313,7 @@ ChapterAtomParser::ChapterAtomParser(
     const mkvparser::Chapters::Display* display)
     : display_(display) {
   str_ = display->GetString();
-  const size_t len = strlen(str_);
+  const size_t len = strnlen(str_,512);
   str_end_ = str_ + len;
 }
 

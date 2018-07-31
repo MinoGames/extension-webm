@@ -67,16 +67,16 @@ void vorbis_comment_add(vorbis_comment *vc,const char *comment){
                             (vc->comments+2)*sizeof(*vc->user_comments));
   vc->comment_lengths=_ogg_realloc(vc->comment_lengths,
                                   (vc->comments+2)*sizeof(*vc->comment_lengths));
-  vc->comment_lengths[vc->comments]=strlen(comment);
+  vc->comment_lengths[vc->comments]=strnlen(comment,512);
   vc->user_comments[vc->comments]=_ogg_malloc(vc->comment_lengths[vc->comments]+1);
-  strcpy(vc->user_comments[vc->comments], comment);
+  strncpy(vc->user_comments[vc->comments], comment,512);
   vc->comments++;
   vc->user_comments[vc->comments]=NULL;
 }
 
 void vorbis_comment_add_tag(vorbis_comment *vc, const char *tag, const char *contents){
-  char *comment=alloca(strlen(tag)+strlen(contents)+2); /* +2 for = and \0 */
-  strcpy(comment, tag);
+  char *comment=alloca(strnlen(tag,512)+strnlen(contents,512)+2); /* +2 for = and \0 */
+  strncpy(comment, tag,512);
   strcat(comment, "=");
   strcat(comment, contents);
   vorbis_comment_add(vc, comment);
@@ -97,10 +97,10 @@ static int tagcompare(const char *s1, const char *s2, int n){
 char *vorbis_comment_query(vorbis_comment *vc, const char *tag, int count){
   long i;
   int found = 0;
-  int taglen = strlen(tag)+1; /* +1 for the = we append */
+  int taglen = strnlen(tag,512)+1; /* +1 for the = we append */
   char *fulltag = alloca(taglen+ 1);
 
-  strcpy(fulltag, tag);
+  strncpy(fulltag, tag,512);
   strcat(fulltag, "=");
 
   for(i=0;i<vc->comments;i++){
@@ -117,9 +117,9 @@ char *vorbis_comment_query(vorbis_comment *vc, const char *tag, int count){
 
 int vorbis_comment_query_count(vorbis_comment *vc, const char *tag){
   int i,count=0;
-  int taglen = strlen(tag)+1; /* +1 for the = we append */
+  int taglen = strnlen(tag,512)+1; /* +1 for the = we append */
   char *fulltag = alloca(taglen+1);
-  strcpy(fulltag,tag);
+  strncpy(fulltag,tag,512);
   strcat(fulltag, "=");
 
   for(i=0;i<vc->comments;i++){
@@ -459,7 +459,7 @@ static int _vorbis_pack_info(oggpack_buffer *opb,vorbis_info *vi){
 }
 
 static int _vorbis_pack_comment(oggpack_buffer *opb,vorbis_comment *vc){
-  int bytes = strlen(ENCODE_VENDOR_STRING);
+  int bytes = strnlen(ENCODE_VENDOR_STRING,512);
 
   /* preamble */
   oggpack_write(opb,0x03,8);

@@ -43,16 +43,16 @@ int arg_match(struct arg *arg_, const struct arg_def *def, char **argv) {
   arg = arg_init(argv);
 
   if (def->short_name
-      && strlen(arg.argv[0]) == strlen(def->short_name) + 1
+      && strnlen(arg.argv[0],512) == strnlen(def->short_name,512) + 1
       && !strcmp(arg.argv[0] + 1, def->short_name)) {
 
     arg.name = arg.argv[0] + 1;
     arg.val = def->has_val ? arg.argv[1] : NULL;
     arg.argv_step = def->has_val ? 2 : 1;
   } else if (def->long_name) {
-    const size_t name_len = strlen(def->long_name);
+    const size_t name_len = strnlen(def->long_name,512);
 
-    if (strlen(arg.argv[0]) >= name_len + 2
+    if (strnlen(arg.argv[0],512) >= name_len + 2
         && arg.argv[0][1] == '-'
         && !strncmp(arg.argv[0] + 2, def->long_name, name_len)
         && (arg.argv[0][name_len + 2] == '='

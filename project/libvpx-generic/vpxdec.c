@@ -466,7 +466,7 @@ static void generate_filename(const char *pattern, char *out, size_t q_len,
           break;
       }
 
-      pat_len = strlen(q);
+      pat_len = strnlen(q,512);
       if (pat_len >= q_len - 1)
         die("Output filename too long.\n");
       q += pat_len;
@@ -477,7 +477,7 @@ static void generate_filename(const char *pattern, char *out, size_t q_len,
 
       /* copy the next segment */
       if (!next_pat)
-        copy_len = strlen(p);
+        copy_len = strnlen(p,512);
       else
         copy_len = next_pat - p;
 
@@ -719,7 +719,7 @@ static int main_loop(int argc, const char **argv_) {
 
   /* Check for unrecognized options */
   for (argi = argv; *argi; argi++)
-    if (argi[0][0] == '-' && strlen(argi[0]) > 1)
+    if (argi[0][0] == '-' && strnlen(argi[0],512) > 1)
       die("Error: Unrecognized option %s\n", *argi);
 
   /* Handle non-option arguments */

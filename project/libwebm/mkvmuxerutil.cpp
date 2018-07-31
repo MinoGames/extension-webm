@@ -275,7 +275,7 @@ uint64 EbmlElementSize(uint64 type, const char* value) {
   uint64 ebml_size = GetUIntSize(type);
 
   // Datasize
-  ebml_size += strlen(value);
+  ebml_size += strnlen(value,512);
 
   // Size of Datasize
   ebml_size++;
@@ -484,7 +484,7 @@ bool WriteEbmlElement(IMkvWriter* writer, uint64 type, const char* value) {
   if (WriteID(writer, type))
     return false;
 
-  const uint64 length = strlen(value);
+  const uint64 length = strnlen(value,512);
   if (WriteUInt(writer, length))
     return false;
 

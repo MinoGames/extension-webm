@@ -46,13 +46,13 @@ bool StrCpy(const char* src, char** dst_ptr) {
   if (src == NULL)
     return true;
 
-  const size_t size = strlen(src) + 1;
+  const size_t size = strnlen(src,512) + 1;
 
   dst = new (std::nothrow) char[size];  // NOLINT
   if (dst == NULL)
     return false;
 
-  strcpy(dst, src);  // NOLINT
+  strncpy(dst, src,512);  // NOLINT
   return true;
 }
 }  // namespace
@@ -797,13 +797,13 @@ void Track::set_codec_id(const char* codec_id) {
   if (codec_id) {
     delete[] codec_id_;
 
-    const size_t length = strlen(codec_id) + 1;
+    const size_t length = strnlen(codec_id,512) + 1;
     codec_id_ = new (std::nothrow) char[length];  // NOLINT
     if (codec_id_) {
 #ifdef _MSC_VER
       strcpy_s(codec_id_, length, codec_id);
 #else
-      strcpy(codec_id_, codec_id);
+      strncpy(codec_id_, codec_id,512);
 #endif
     }
   }
@@ -814,13 +814,13 @@ void Track::set_language(const char* language) {
   if (language) {
     delete[] language_;
 
-    const size_t length = strlen(language) + 1;
+    const size_t length = strnlen(language,512) + 1;
     language_ = new (std::nothrow) char[length];  // NOLINT
     if (language_) {
 #ifdef _MSC_VER
       strcpy_s(language_, length, language);
 #else
-      strcpy(language_, language);
+      strncpy(language_, language,512);
 #endif
     }
   }
@@ -830,13 +830,13 @@ void Track::set_name(const char* name) {
   if (name) {
     delete[] name_;
 
-    const size_t length = strlen(name) + 1;
+    const size_t length = strnlen(name,512) + 1;
     name_ = new (std::nothrow) char[length];  // NOLINT
     if (name_) {
 #ifdef _MSC_VER
       strcpy_s(name_, length, name);
 #else
-      strcpy(name_, name);
+      strncpy(name_, name,512);
 #endif
     }
   }
@@ -2086,7 +2086,7 @@ bool SegmentInfo::Init() {
            minor, build, revision);
 #endif
 
-  const size_t app_len = strlen(temp) + 1;
+  const size_t app_len = strnlen(temp,512) + 1;
 
   delete[] muxing_app_;
 
@@ -2097,7 +2097,7 @@ bool SegmentInfo::Init() {
 #ifdef _MSC_VER
   strcpy_s(muxing_app_, app_len, temp);
 #else
-  strcpy(muxing_app_, temp);
+  strncpy(muxing_app_, temp,512);
 #endif
 
   set_writing_app(temp);
@@ -2180,7 +2180,7 @@ bool SegmentInfo::Write(IMkvWriter* writer) {
 
 void SegmentInfo::set_muxing_app(const char* app) {
   if (app) {
-    const size_t length = strlen(app) + 1;
+    const size_t length = strnlen(app,512) + 1;
     char* temp_str = new (std::nothrow) char[length];  // NOLINT
     if (!temp_str)
       return;
@@ -2188,7 +2188,7 @@ void SegmentInfo::set_muxing_app(const char* app) {
 #ifdef _MSC_VER
     strcpy_s(temp_str, length, app);
 #else
-    strcpy(temp_str, app);
+    strncpy(temp_str, app,512);
 #endif
 
     delete[] muxing_app_;
@@ -2198,7 +2198,7 @@ void SegmentInfo::set_muxing_app(const char* app) {
 
 void SegmentInfo::set_writing_app(const char* app) {
   if (app) {
-    const size_t length = strlen(app) + 1;
+    const size_t length = strnlen(app,512) + 1;
     char* temp_str = new (std::nothrow) char[length];  // NOLINT
     if (!temp_str)
       return;
@@ -2206,7 +2206,7 @@ void SegmentInfo::set_writing_app(const char* app) {
 #ifdef _MSC_VER
     strcpy_s(temp_str, length, app);
 #else
-    strcpy(temp_str, app);
+    strncpy(temp_str, app,512);
 #endif
 
     delete[] writing_app_;
@@ -2714,7 +2714,7 @@ bool Segment::SetChunking(bool chunking, const char* filename) {
     if (chunking_ && !strcmp(filename, chunking_base_name_))
       return true;
 
-    const size_t name_length = strlen(filename) + 1;
+    const size_t name_length = strnlen(filename,512) + 1;
     char* const temp = new (std::nothrow) char[name_length];  // NOLINT
     if (!temp)
       return false;
@@ -2722,7 +2722,7 @@ bool Segment::SetChunking(bool chunking, const char* filename) {
 #ifdef _MSC_VER
     strcpy_s(temp, name_length, filename);
 #else
-    strcpy(temp, filename);
+    strncpy(temp, filename,512);
 #endif
 
     delete[] chunking_base_name_;
@@ -2752,16 +2752,16 @@ bool Segment::SetChunking(bool chunking, const char* filename) {
     if (!chunk_writer_cluster_->Open(chunk_name_))
       return false;
 
-    const size_t header_length = strlen(filename) + strlen(".hdr") + 1;
+    const size_t header_length = strnlen(filename,512) + strnlen(".hdr",512) + 1;
     char* const header = new (std::nothrow) char[header_length];  // NOLINT
     if (!header)
       return false;
 
 #ifdef _MSC_VER
-    strcpy_s(header, header_length - strlen(".hdr"), chunking_base_name_);
+    strcpy_s(header, header_length - strnlen(".hdr",512), chunking_base_name_);
     strcat_s(header, header_length, ".hdr");
 #else
-    strcpy(header, chunking_base_name_);
+    strncpy(header, chunking_base_name_,512);
     strcat(header, ".hdr");
 #endif
     if (!chunk_writer_header_->Open(header)) {
@@ -3108,16 +3108,16 @@ bool Segment::UpdateChunkName(const char* ext, char** name) const {
   snprintf(ext_chk, sizeof(ext_chk), "_%06d.%s", chunk_count_, ext);
 #endif
 
-  const size_t length = strlen(chunking_base_name_) + strlen(ext_chk) + 1;
+  const size_t length = strnlen(chunking_base_name_,512) + strnlen(ext_chk,512) + 1;
   char* const str = new (std::nothrow) char[length];  // NOLINT
   if (!str)
     return false;
 
 #ifdef _MSC_VER
-  strcpy_s(str, length - strlen(ext_chk), chunking_base_name_);
+  strcpy_s(str, length - strnlen(ext_chk,512), chunking_base_name_);
   strcat_s(str, length, ext_chk);
 #else
-  strcpy(str, chunking_base_name_);
+  strncpy(str, chunking_base_name_,512);
   strcat(str, ext_chk);
 #endif
 

@@ -1913,10 +1913,10 @@ VP9_COMP *vp9_create_compressor(VP9EncoderConfig *oxcf,
   return cpi;
 }
 #define SNPRINT(H, T) \
-  snprintf((H) + strlen(H), sizeof(H) - strlen(H), (T))
+  snprintf((H) + strnlen(H,512), sizeof(H) - strnlen(H,512), (T))
 
 #define SNPRINT2(H, T, V) \
-  snprintf((H) + strlen(H), sizeof(H) - strlen(H), (T), (V))
+  snprintf((H) + strnlen(H,512), sizeof(H) - strnlen(H,512), (T), (V))
 
 void vp9_remove_compressor(VP9_COMP *cpi) {
   VP9_COMMON *const cm = &cpi->common;
