@@ -39,6 +39,7 @@ typedef WebmDisplay = {
     duration:Float,
     width:Float,
     height:Float,
+    firstFrame:Bool,
     lastRequestedVideoFrame:Float,
     loaded:Void->Void,
     id:Int
@@ -86,6 +87,7 @@ class MultiWebmThread {
             height: 1,
             lastRequestedVideoFrame: 0,
             loaded: loaded,
+            firstFrame: false,
             id: id
         };
         webms.set(id, obj);
@@ -94,7 +96,7 @@ class MultiWebmThread {
         thread.sendMessage(Create, {id: id, path: path});
         #else
         var webm = new WebmPlayer(new WebmIoFile(path), false, true, function(bytes) {
-            onFrame(bmp, bytes);
+            onFrame(obj, bytes);
         });
 
         bmp.bitmapData = new BitmapData(webm.width, webm.height, true, 0xFFFF0000);
@@ -214,7 +216,7 @@ class MultiWebmThread {
                         bytes.blit(0, data.bytes, 0, data.bytes.length);
 
                         if (webm.bitmap.bitmapData != null) {
-                            onFrame(webm.bitmap, bytes);
+                            onFrame(webm, bytes);
                             //onFrame(webm.bitmap, cast data.bytes);
                         }
                     });
@@ -252,17 +254,25 @@ class MultiWebmThread {
         #end
     }
 
-    function onFrame(bitmap:Bitmap, bytes) {
+    function onFrame(webm:WebmDisplay, bytes) {
         var byteArray:ByteArray = ByteArray.fromBytes(bytes);
 
-        bitmap.bitmapData.lock();
-        bitmap.bitmapData.setPixels(bitmap.bitmapData.rect, byteArray);
-        bitmap.bitmapData.unlock();
+        webm.bitmap.bitmapData.lock();
+        webm.bitmap.bitmapData.setPixels(webm.bitmap.bitmapData.rect, byteArray);
+        webm.bitmap.bitmapData.unlock();
 
         // TODO: Too aggressive?
         //byteArray.clear();
 
-        bitmap.smoothing = true;
+        webm.bitmap.smoothing = true;
+
+        if (!webm.firstFrame) {
+            webm.firstFrame = true;
+            if (webm.loaded != null) {
+                webm.loaded();
+                webm.loaded = null;
+            }
+        }
     }
 
     public function stop(id:Int) {

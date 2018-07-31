@@ -74,7 +74,7 @@ class ThreadSync {
             }
         } while(message != null);
 
-        trace('messageRead: $messageRead');
+        //trace('messageRead: $messageRead');
     }
 
     public static function create(params:Dynamic, init:(Int->Dynamic->Void)->Dynamic->{fps:Float, received: (Int->Dynamic->Bool), processed: Void->Void, disposed: Void->Void}, sent:Int->Dynamic->Void) {
@@ -162,8 +162,8 @@ class ThreadProcess {
                         // Process
                         var i = 0;
                         while(!done) {
-                            Sys.sleep(1 / fps * 0.75);
-
+                            var timer = haxe.Timer.stamp();
+                            
                             // Read message from current thread, stop if we get "close" otherwise send message to Socket
                             var msgDynamic:Dynamic = Thread.readMessage(false);
                             var msg:ThreadMessage = msgDynamic;
@@ -178,6 +178,12 @@ class ThreadProcess {
                             }
 
                             process();
+
+                            // Sleep until frameRate
+                            var diff = haxe.Timer.stamp() - timer;
+                            var wait = 1 / fps;
+
+                            if (wait > diff) Sys.sleep(wait - diff);
                         }
                     } else {
                         log('Invalid Params sent to Thread Process ${id}');

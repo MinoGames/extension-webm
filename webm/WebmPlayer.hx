@@ -41,7 +41,7 @@ class WebmPlayer
     public var width:Int;
     public var height:Int;
 
-	public function new(io:WebmIo, soundEnabled:Bool = false, loop:Bool = true, ?frameHandler:Bytes->Void = null)
+	public function new(io:WebmIo, soundEnabled:Bool = false, loop:Bool = false, ?frameHandler:Bytes->Void = null)
 	{
         this.loop = loop;
 		this.soundEnabled = soundEnabled;
@@ -55,6 +55,11 @@ class WebmPlayer
 
 		vpxDecoder = new VpxDecoder();
         vpxDecoder.frameHandler = frameHandler;
+        
+        /*vpxDecoder.endHandler = function() {
+            trace('THE END?');
+            lastDecodedVideoFrame = duration;
+        };*/
 
 		webmDecoder = hx_webm_decoder_create(io.io, soundEnabled);
 		
@@ -166,8 +171,14 @@ class WebmPlayer
 		stepVideoFrame();
 	}*/
 	
+    var goRestart = false;
 	function stepVideoFrame()
 	{
+        if (goRestart) {
+            goRestart = false;
+            restart();
+        }
+
 		var startRenderedCount = renderedCount;
 		var elapsedTime = getElapsedTime ();
 
@@ -180,9 +191,13 @@ class WebmPlayer
 		
 		if (!hx_webm_decoder_has_more(webmDecoder))
 		{
+            lastRequestedVideoFrame = duration;
+            lastDecodedVideoFrame = duration;
+            //trace('The end!');
+
 			//dispatchEvent(new WebmEvent(WebmEvent.COMPLETE));
 			if (loop) {
-                restart();
+                goRestart = true;
             } else {
                 stop();
             }

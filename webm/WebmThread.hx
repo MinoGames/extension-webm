@@ -42,6 +42,7 @@ class WebmThread extends Bitmap {
     public var duration:Float = 5;
 
     public var loaded:Void->Void = null;
+    var firstFrame = false;
 
     public static function create(path:String) {
         var webm = new WebmThread(path);
@@ -104,8 +105,6 @@ class WebmThread extends Bitmap {
 
                     bitmapData = new BitmapData(data.width, data.height, true, 0x00000000);
                     smoothing = true;
-
-                    if (loaded != null) loaded();
                 case Frame : 
                     // Copy bytes
                     // TODO: Do it from the Thread instead???
@@ -115,6 +114,14 @@ class WebmThread extends Bitmap {
 
                     if (bitmapData != null) onFrame(cast data);
                     //if (bitmapData != null) onFrame(bytes);
+
+                    if (!firstFrame) {
+                        firstFrame = true;
+                        if (loaded != null) {
+                            loaded();
+                            loaded = null;
+                        }
+                    }
                 case -1:
                     // TODO: Too agressive?
                     if (bitmapData != null) bitmapData.dispose();
