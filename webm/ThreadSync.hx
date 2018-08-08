@@ -77,7 +77,7 @@ class ThreadSync {
         //trace('messageRead: $messageRead');
     }
 
-    public static function create(params:Dynamic, init:(Int->Dynamic->Void)->Dynamic->{fps:Float, received: (Int->Dynamic->Bool), processed: Void->Void, disposed: Void->Void}, sent:Int->Dynamic->Void) {
+    public static function create(params:Dynamic, init:(Int->Dynamic->Void)->Dynamic->(Void->Void)->{fps:Float, received: (Int->Dynamic->Bool), processed: Void->Void, disposed: Void->Void}, sent:Int->Dynamic->Void) {
         ThreadSync.init();
         
         var thread = new ThreadProcess(ThreadSync.id++);
@@ -111,7 +111,7 @@ class ThreadProcess {
         sent = null;
     }
 
-    public function create(params:Dynamic, init:(Int->Dynamic->Void)->Dynamic->{fps:Float, received: (Int->Dynamic->Bool), processed: Void->Void, disposed: Void->Void}, sent:Int->Dynamic->Void) {
+    public function create(params:Dynamic, init:(Int->Dynamic->Void)->Dynamic->(Void->Void)->{fps:Float, received: (Int->Dynamic->Bool), processed: Void->Void, disposed: Void->Void}, sent:Int->Dynamic->Void) {
         var id = this.id;
 
         this.sent = sent;
@@ -147,17 +147,19 @@ class ThreadProcess {
                 if (main != null) {
                     var params:String = readMessage(Params);
                     if (params != null) {
+                        // Listeners
+                        var done = false;
+                        
                         var handlers = init(function(type, data) {
                             main.sendMessage({id: id, type: type, data: data});
-                        }, params);
+                        }, params, function() {
+                            done = true;
+                        });
 
                         var received = handlers.received;
                         dispose = handlers.disposed;
                         process = handlers.processed;
                         var fps = handlers.fps;
-
-                        // Listeners
-                        var done = false;
 
                         // Process
                         var i = 0;
