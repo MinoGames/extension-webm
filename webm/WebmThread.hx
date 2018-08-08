@@ -61,7 +61,7 @@ class WebmThread extends Bitmap {
         super(null, PixelSnapping.AUTO, true);
 
         #if (sys && !neko && !disableThread2)
-        thread = ThreadSync.create(path, function(sendMessage, path) {
+        thread = ThreadSync.create(path, function(sendMessage, path, close) {
             // Initialization
 
             // Create WebSocket object
