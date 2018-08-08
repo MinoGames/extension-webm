@@ -123,7 +123,7 @@ class MultiWebmThread {
         webms = new Map();
 
         #if (sys && !neko && !disableThread2)
-        thread = ThreadSync.create({}, function(sendMessage, data) {
+        thread = ThreadSync.create({}, function(sendMessage, data, close) {
             // Initialization
             var webms:Map<Int, WebmProcess> = new Map();
 
