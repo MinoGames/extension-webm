@@ -11,7 +11,7 @@ import openfl.utils.ByteArray;
 import openfl.Lib;
 import webm.*;
 
-#if (sys && !neko && !disableThread2)
+#if (sys && !neko)
 import webm.ThreadSync;
 #end
 
@@ -31,11 +31,13 @@ abstract WebmReceived(Int) from Int to Int {
 @:access(webm.WebmPlayer)
 class WebmThread extends Bitmap {
 
-    #if (sys && !neko && !disableThread2)
+    #if (sys && !neko)
     var thread:ThreadProcess;
-    #else
-    var webm:WebmPlayer;
     #end
+
+    var webm:WebmPlayer;
+    
+    public var useThread = true;
 
     public var lastRequestedVideoFrame:Float = 0;
     public var frameRate:Float = 24;
@@ -44,8 +46,8 @@ class WebmThread extends Bitmap {
     public var loaded:Void->Void = null;
     var firstFrame = false;
 
-    public static function create(path:String) {
-        var webm = new WebmThread(path);
+    public static function create(path:String, useThread:Bool = true) {
+        var webm = new WebmThread(path, useThread);
         return webm;
     }
 
@@ -57,109 +59,119 @@ class WebmThread extends Bitmap {
         #end
     }
 
-    public function new(path:String) {
+    public function new(path:String, useThread:Bool = true) {
         super(null, PixelSnapping.AUTO, true);
 
         #if (sys && !neko && !disableThread2)
-        thread = ThreadSync.create(path, function(sendMessage, path, close) {
-            // Initialization
+        this.useThread = useThread;
+        #else
+        this.useThread = false;
+        #end
 
-            // Create WebSocket object
-            var webm = new WebmPlayer(new WebmIoFile(path), false, true, function(bytes) {
-                sendMessage(Frame, bytes);
+        trace('-------------- USE THREAD: ${useThread}');
+
+        if (this.useThread) {
+            #if (sys && !neko)
+            thread = ThreadSync.create(path, function(sendMessage, path, close) {
+                // Initialization
+
+                // Create WebSocket object
+                var webm = new WebmPlayer(new WebmIoFile(path), false, true, function(bytes) {
+                    sendMessage(Frame, bytes);
+                });
+                webm.play();
+
+                sendMessage(Info, { width: webm.width, height: webm.height, frameRate: webm.frameRate, duration: webm.duration });
+
+                return {
+                fps: webm.frameRate,    
+                received: function(type, data) {
+                    // Message Received from Thread
+                    return switch(type) {
+                        case Play : 
+                            webm.play();
+                            false;
+                        case Stop : 
+                            webm.stop();
+                            true;
+                        default: 
+                            false;
+                    }
+                    // -- Received
+                }, processed: function() {
+                    webm.process();
+                    sendMessage(FrameInfo, { lastRequestedVideoFrame: webm.lastRequestedVideoFrame });
+                }, disposed: function() {
+                    webm.dispose();
+                }};
+                // -- Initialization
+            }, function(type:Int, data:Dynamic) {
+                // Message Sent from Thread
+                switch(type) {
+                    case FrameInfo:
+                        lastRequestedVideoFrame = data.lastRequestedVideoFrame;
+                    case Info  : 
+                        frameRate = data.frameRate;
+                        duration = data.duration;
+
+                        bitmapData = new BitmapData(data.width, data.height, true, 0x00000000);
+                        smoothing = true;
+                    case Frame : 
+                        // Copy bytes
+                        // TODO: Do it from the Thread instead???
+                        
+                        //var bytes = haxe.io.Bytes.alloc(data.length);
+                        //bytes.blit(0, data, 0, data.length);
+
+                        if (bitmapData != null) onFrame(cast data);
+                        //if (bitmapData != null) onFrame(bytes);
+
+                        if (!firstFrame) {
+                            firstFrame = true;
+                            if (loaded != null) {
+                                loaded();
+                                loaded = null;
+                            }
+                        }
+                    case -1:
+                        // TODO: Too agressive?
+                        if (bitmapData != null) bitmapData.dispose();
+                }
+                // -- Sent
             });
+            #end
+        } else {
+            // Create WebSocket object
+            webm = new WebmPlayer(new WebmIoFile(path), false, true, function(bytes) {
+                onFrame(bytes);
+            });
+
+            duration = webm.duration;
+            frameRate = webm.frameRate;
+
+            bitmapData = new BitmapData(webm.width, webm.height, true, 0x00000000);
             webm.play();
 
-            sendMessage(Info, { width: webm.width, height: webm.height, frameRate: webm.frameRate, duration: webm.duration });
-
-            return {
-            fps: webm.frameRate,    
-            received: function(type, data) {
-                // Message Received from Thread
-                return switch(type) {
-                    case Play : 
-                        webm.play();
-                        false;
-                    case Stop : 
-                        webm.stop();
-                        true;
-                    default: 
-                        false;
-                }
-                // -- Received
-            }, processed: function() {
-                webm.process();
-                sendMessage(FrameInfo, { lastRequestedVideoFrame: webm.lastRequestedVideoFrame });
-            }, disposed: function() {
-                webm.dispose();
-            }};
-            // -- Initialization
-        }, function(type:Int, data:Dynamic) {
-            // Message Sent from Thread
-            switch(type) {
-                case FrameInfo:
-                    lastRequestedVideoFrame = data.lastRequestedVideoFrame;
-                case Info  : 
-                    frameRate = data.frameRate;
-                    duration = data.duration;
-
-                    bitmapData = new BitmapData(data.width, data.height, true, 0x00000000);
-                    smoothing = true;
-                case Frame : 
-                    // Copy bytes
-                    // TODO: Do it from the Thread instead???
-                    
-                    //var bytes = haxe.io.Bytes.alloc(data.length);
-                    //bytes.blit(0, data, 0, data.length);
-
-                    if (bitmapData != null) onFrame(cast data);
-                    //if (bitmapData != null) onFrame(bytes);
-
-                    if (!firstFrame) {
-                        firstFrame = true;
-                        if (loaded != null) {
-                            loaded();
-                            loaded = null;
-                        }
-                    }
-                case -1:
-                    // TODO: Too agressive?
-                    if (bitmapData != null) bitmapData.dispose();
-            }
-            // -- Sent
-        });
-        #else
-        // Create WebSocket object
-        webm = new WebmPlayer(new WebmIoFile(path), false, true, function(bytes) {
-            onFrame(bytes);
-        });
-
-        duration = webm.duration;
-        frameRate = webm.frameRate;
-
-        bitmapData = new BitmapData(webm.width, webm.height, true, 0x00000000);
-        webm.play();
-
-        addEventListener(Event.ENTER_FRAME, enterFrameHandler);
-        // TODO: Add ENTER_FRAME for processing
-        #end
+            addEventListener(Event.ENTER_FRAME, enterFrameHandler);
+            // TODO: Add ENTER_FRAME for processing
+        }
     }
 
     function enterFrameHandler(e) {
-        #if (sys && !neko && !disableThread2)
-        
-        #else
-        webm.process();
-        lastRequestedVideoFrame = webm.lastRequestedVideoFrame;
-        #end
+        if (!this.useThread) {
+            webm.process();
+            lastRequestedVideoFrame = webm.lastRequestedVideoFrame;
+        }
     }
 
     public function play() {
-        #if (sys && !neko && !disableThread2)
-        thread.sendMessage(Play, {});
-        #else
-        webm.play();
-        #end
+        if (this.useThread) {
+            #if (sys && !neko)
+            thread.sendMessage(Play, {});
+            #end
+        } else {
+            webm.play();
+        }
     }
 
     function onFrame(bytes) {
@@ -176,12 +188,14 @@ class WebmThread extends Bitmap {
     }
 
     public function stop() {
-        #if (sys && !neko && !disableThread2)
-        thread.sendMessage(Stop, {});
-        #else
-        webm.stop();
-        webm.dispose();
-        #end
+        if (this.useThread) {
+            #if (sys && !neko)
+            thread.sendMessage(Stop, {});
+            #end
+        } else {
+            webm.stop();
+            webm.dispose();
+        }
     }
 
     public function dispose() {
