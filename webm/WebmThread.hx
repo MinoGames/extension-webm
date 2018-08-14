@@ -52,11 +52,15 @@ class WebmThread extends Bitmap {
     }
 
     public function getId() {
-        #if (sys && !neko && !disableThread2)
-        return thread.id;
-        #else
-        return -1;
-        #end
+        return if (this.useThread) {
+            #if (sys && !neko)
+            thread.id;
+            #else
+            -1;
+            #end
+        } else {
+            -1;
+        }
     }
 
     public function new(path:String, useThread:Bool = true) {
@@ -117,14 +121,7 @@ class WebmThread extends Bitmap {
                         bitmapData = new BitmapData(data.width, data.height, true, 0x00000000);
                         smoothing = true;
                     case Frame : 
-                        // Copy bytes
-                        // TODO: Do it from the Thread instead???
-                        
-                        //var bytes = haxe.io.Bytes.alloc(data.length);
-                        //bytes.blit(0, data, 0, data.length);
-
                         if (bitmapData != null) onFrame(cast data);
-                        //if (bitmapData != null) onFrame(bytes);
 
                         if (!firstFrame) {
                             firstFrame = true;
