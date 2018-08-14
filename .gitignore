@@ -3,8 +3,4 @@
 /project/vc110.pdb
 /project/all_objs
 /deploy.zip
-/ndll/*/*.a
-/ndll/*/*.ndll
-/ndll/*/*.hash
-/ndll/*
 .DS_Store

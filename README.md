@@ -13,14 +13,9 @@ haxelib install openfl-webm
 
 ## Simple Example:
 
-```actionscript
-var sprite:Sprite = new Sprite();
-sprite.scaleX = 2;
-sprite.scaleY = 2;
-addChild(sprite);
-
+```haxe
 var io:WebmIo = new WebmIoFile("c:/projects/test.webm");
-var player:WebmPlayer = new WebmPlayer(io, sprite);
+var player:WebmPlayer = new WebmPlayer(io);
 player.addEventListener('play', function(e) {
 	trace('play!');
 });
@@ -31,4 +26,8 @@ player.addEventListener('stop', function(e) {
 	trace('stop!');
 });
 player.play();
+
+addChild(player);
 ```
+
+For alpha channel with `ffmpeg` using a sequence of PNG `ffmpeg -y -framerate 24 -f image2 -i image_%04d.png -c:v libvpx -pix_fmt yuva420p -auto-alt-ref 0 movie.webm`

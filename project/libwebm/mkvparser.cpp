@@ -6163,6 +6163,8 @@ long Cluster::ParseBlockGroup(long long payload_size, long long& pos,
   }
 
   long long discard_padding = 0;
+  long long additional_start = 0;
+  long long additional_stop = 0;
 
   while (pos < payload_stop) {
     // parse sub-block element ID
@@ -6242,6 +6244,23 @@ long Cluster::ParseBlockGroup(long long payload_size, long long& pos,
 
       if (status < 0)  // error
         return status;
+    }
+
+    if (id == 0x35A1) { // Additional data (why is the left most 1 bit ignored?)
+        // Took a while, but I figured it out!!
+        additional_start = pos;
+        const long long additional_id = ReadUInt(pReader, additional_start, len);
+        additional_start += len;  // consume ID
+
+        const long long additional_size = ReadUInt(pReader, additional_start, len);
+        additional_start += len;  // consume size
+
+        additional_start += 4; // Skip something?
+
+        const long long additonal_something = ReadUInt(pReader, additional_start, len);
+        additional_start += len;  // consume something
+        
+        additional_stop = payload_stop;      
     }
 
     if (id != 0x21) {  // sub-part of BlockGroup is not a Block
@@ -6336,7 +6355,7 @@ long Cluster::ParseBlockGroup(long long payload_size, long long& pos,
   assert(pos == payload_stop);
 
   status = CreateBlock(0x20,  // BlockGroup ID
-                       payload_start, payload_size, discard_padding);
+                       payload_start, payload_size, discard_padding, additional_start, additional_stop);
   if (status != 0)
     return status;
 
@@ -6723,7 +6742,8 @@ long long Cluster::GetLastTime() const {
 
 long Cluster::CreateBlock(long long id,
                           long long pos,  // absolute pos of payload
-                          long long size, long long discard_padding) {
+                          long long size, long long discard_padding,
+                          long long additional_start, long long additional_stop) {
   assert((id == 0x20) || (id == 0x23));  // BlockGroup or SimpleBlock
 
   if (m_entries_count < 0) {  // haven't parsed anything yet
@@ -6760,14 +6780,16 @@ long Cluster::CreateBlock(long long id,
     }
   }
 
-  if (id == 0x20)  // BlockGroup ID
-    return CreateBlockGroup(pos, size, discard_padding);
-  else  // SimpleBlock ID
+  if (id == 0x20) {  // BlockGroup ID
+    return CreateBlockGroup(pos, size, discard_padding, additional_start, additional_stop);
+  } else {  // SimpleBlock ID
     return CreateSimpleBlock(pos, size);
+  }
 }
 
 long Cluster::CreateBlockGroup(long long start_offset, long long size,
-                               long long discard_padding) {
+                               long long discard_padding,
+                               long long additional_start, long long additional_stop) {
   assert(m_entries);
   assert(m_entries_size > 0);
   assert(m_entries_count >= 0);
@@ -6793,6 +6815,7 @@ long Cluster::CreateBlockGroup(long long start_offset, long long size,
 
   while (pos < stop) {
     long len;
+
     const long long id = ReadUInt(pReader, pos, len);
     assert(id >= 0);  // TODO
     assert((pos + len) <= stop);
@@ -6839,6 +6862,7 @@ long Cluster::CreateBlockGroup(long long start_offset, long long size,
     pos += size;  // consume payload
     assert(pos <= stop);
   }
+
   if (bpos < 0)
     return E_FILE_FORMAT_INVALID;
 
@@ -6851,7 +6875,7 @@ long Cluster::CreateBlockGroup(long long start_offset, long long size,
   BlockEntry*& pEntry = *ppEntry;
 
   pEntry = new (std::nothrow)
-      BlockGroup(this, idx, bpos, bsize, prev, next, duration, discard_padding);
+      BlockGroup(this, idx, bpos, bsize, prev, next, duration, discard_padding, additional_start, additional_stop);
 
   if (pEntry == NULL)
     return -1;  // generic error
@@ -7177,9 +7201,10 @@ const Block* SimpleBlock::GetBlock() const { return &m_block; }
 
 BlockGroup::BlockGroup(Cluster* pCluster, long idx, long long block_start,
                        long long block_size, long long prev, long long next,
-                       long long duration, long long discard_padding)
+                       long long duration, long long discard_padding,
+                       long long additional_start, long long additional_stop)
     : BlockEntry(pCluster, idx),
-      m_block(block_start, block_size, discard_padding),
+      m_block(block_start, block_size, discard_padding, additional_start, additional_stop),
       m_prev(prev),
       m_next(next),
       m_duration(duration) {}
@@ -7201,8 +7226,10 @@ long long BlockGroup::GetPrevTimeCode() const { return m_prev; }
 long long BlockGroup::GetNextTimeCode() const { return m_next; }
 long long BlockGroup::GetDurationTimeCode() const { return m_duration; }
 
-Block::Block(long long start, long long size_, long long discard_padding)
+Block::Block(long long start, long long size_, long long discard_padding, long long additional_start, long long additional_stop)
     : m_start(start),
+      m_additional_start(additional_start),
+      m_additional_stop(additional_stop),
       m_size(size_),
       m_track(0),
       m_timecode(-1),
@@ -7642,6 +7669,16 @@ const Block::Frame& Block::GetFrame(int idx) const {
   const Frame& f = m_frames[idx];
   assert(f.pos > 0);
   assert(f.len > 0);
+
+  return f;
+}
+
+const Block::Frame& Block::AdditionalFrame() const {
+  
+  Frame* m_frames = new Frame[1];
+  Frame& f = m_frames[0];
+  f.pos = m_additional_start;
+  f.len = m_additional_stop - m_additional_start;
 
   return f;
 }
